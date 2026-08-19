@@ -1,313 +1,241 @@
-// ==============================================================================
-// NAMA FILE: Kode.gs
-// DESKRIPSI: Backend Apps Script Teroptimasi & Super Cerdas
-// ==============================================================================
+// ======= ID SPREADSHEET PRIBADI ANDA =======
+const SPREADSHEET_ID = "1lkRZz2V6ZZK0UueUJ9xcj_wAFOX8wpsKxhrlkgQhQ_k";
 
-// ID SPREADSHEET ANDA (HARDCODED UNTUK KECEPATAN MAKSIMAL)
-const SPREADSHEET_ID = "1F8MFhlDGGJ2Rora5wQgp7kNYSSaC3XbOPlRNwLNSLKM";
-
-function saveOrder(data) {
-  const lock = LockService.getScriptLock();
-  try {
-    lock.waitLock(10000);
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-
-    // Cek beberapa variasi nama sheet untuk Data_Orders
-    let sheet = ss.getSheetByName("Data_Orders") || ss.getSheetByName("Data Orders") || ss.getSheetByName("Orders");
-
-    if (!sheet) {
-      sheet = ss.insertSheet("Data_Orders");
-      sheet.appendRow([
-        "ID_Order", "Timestamp", "Nama_Pemohon", "No_WA", "Perusahaan",
-        "Departemen", "Section", "Tgl_Pelaksanaan", "Shift", "Waktu_Request",
-        "Durasi_Request", "Lokasi", "Tujuan", "Deskripsi", "Foto_Base64",
-        "Status", "Unit_CT", "GL", "Operator", "Rigger",
-        "Waktu_Start_Aktual", "Waktu_End_Aktual", "Durasi_Aktual", "Alasan_Delay"
-      ]);
-    }
-
-    const dateStr = Utilities.formatDate(new Date(), "GMT+8", "yyyyMMdd");
-    const timestamp = Utilities.formatDate(new Date(), "GMT+8", "dd/MM/yyyy HH:mm");
-
-    const lastRow = sheet.getLastRow();
-    let nextNum = 1;
-
-    if (lastRow > 1) {
-      const lastIdStr = String(sheet.getRange(lastRow, 1).getValue());
-      if (lastIdStr.startsWith(`LIFT-${dateStr}-`)) {
-        let numPart = lastIdStr.split('-')[2];
-        if (numPart) {
-          let lastNum = parseInt(numPart.split('_')[0]);
-          if (!isNaN(lastNum)) nextNum = lastNum + 1;
-        }
-      }
-    }
-
-    const orderId = `LIFT-${dateStr}-${nextNum}`;
-
-    const rowData = [
-      orderId, timestamp, data.nama || "", data.wa || "", data.perusahaan || "",
-      data.departemen || "", data.section || "", data.tanggal || "", data.shift || "",
-      "'" + (data.waktu || "00:00"), data.durasi || 0, data.lokasi || "",
-      data.tujuan || "", data.deskripsi || "", data.foto || "",
-      "Menunggu Validasi", "", "", "", "", "", "", "", ""
-    ];
-
-    sheet.appendRow(rowData);
-    SpreadsheetApp.flush();
-
-    return { success: true, id: orderId, message: "Order berhasil disimpan." };
-  } catch (error) {
-    return { success: false, message: error.toString() };
-  } finally {
-    lock.releaseLock();
+function getSheetSmart(ss, sheetName) {
+  let sheet = ss.getSheetByName(sheetName);
+  if (!sheet) {
+    sheet = ss.insertSheet(sheetName);
   }
-}
-
-function getAppData() {
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-
-  // LOGIKA CERDAS: Mencari tab Master Data walau salah ketik spasi/underscore
-  let sheetMaster = ss.getSheetByName("Master_Data") || ss.getSheetByName("Master Data") || ss.getSheetByName("Data Master") || ss.getSheetByName("Master");
-  let masterData = [];
-
-  if (sheetMaster) {
-    const mData = sheetMaster.getDataRange().getValues();
-    if (mData.length > 0) {
-      // Cek apakah baris pertama itu Judul atau Data asli
-      const firstVal = String(mData[0][0]).toLowerCase().trim();
-      const validCategories = ["perusahaan", "departemen", "section", "unit ct", "gl", "operator", "rigger", "password"];
-
-      // Jika baris pertama BUKAN kategori valid di atas, berarti itu adalah Header (Judul), kita hapus.
-      // Jika baris pertama ADALAH kategori, berarti user tidak pakai judul, jangan dihapus.
-      if (!validCategories.includes(firstVal)) {
-        mData.shift();
-      }
-    }
-    // Hanya simpan baris yang ada isinya di kolom A dan B
-    masterData = mData.filter(r => r[0] && r[1]);
-  }
-
-  // Logika baca tabel order
-  let sheetOrders = ss.getSheetByName("Data_Orders") || ss.getSheetByName("Data Orders") || ss.getSheetByName("Orders");
-  let ordersData = [];
-  if (sheetOrders && sheetOrders.getLastRow() > 1) {
-    const oData = sheetOrders.getDataRange().getValues();
-    const headers = oData.shift();
-
-    ordersData = oData.map(row => {
-      let obj = {};
-      headers.forEach((header, index) => {
-        let val = row[index];
-        if (val instanceof Date) {
-          if (header === 'Tgl_Pelaksanaan') obj[header] = Utilities.formatDate(val, "GMT+8", "yyyy-MM-dd");
-          else obj[header] = Utilities.formatDate(val, "GMT+8", "HH:mm");
-        } else if (typeof val === 'number' && header.includes('Waktu')) {
-          let totalMinutes = Math.round(val * 24 * 60);
-          let h = Math.floor(totalMinutes / 60).toString().padStart(2, '0');
-          let m = (totalMinutes % 60).toString().padStart(2, '0');
-          obj[header] = `${h}:${m}`;
-        } else {
-          obj[header] = val !== undefined && val !== null ? String(val) : "";
-        }
-      });
-      return obj;
-    });
-  }
-
-  return { master: masterData, orders: ordersData };
-}
-
-function updateJobRecord(data) {
-  const lock = LockService.getScriptLock();
-  try {
-    lock.waitLock(10000);
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    const sheet = ss.getSheetByName("Data_Orders") || ss.getSheetByName("Data Orders");
-    if (!sheet) throw new Error("Sheet order tidak ditemukan");
-
-    const range = sheet.getDataRange();
-    const values = range.getValues();
-
-    for (let i = 1; i < values.length; i++) {
-      if (String(values[i][0]) === String(data.id)) {
-
-        if (data.isResuming) {
-          // Tutup Job Lama
-          sheet.getRange(i + 1, 16).setValue('Completed');
-
-          // Buat baris baru untuk resume
-          let baseId = String(data.id).split('_')[0];
-          let maxSplit = 0;
-          for (let j = 1; j < values.length; j++) {
-            let cid = String(values[j][0]);
-            if (cid.startsWith(baseId + "_")) {
-              let spl = parseInt(cid.split('_')[1]);
-              if (!isNaN(spl) && spl > maxSplit) maxSplit = spl;
-            }
-          }
-          let newId = baseId + "_" + (maxSplit + 1);
-
-          let newRow = [...values[i]];
-          newRow[0] = newId;
-          newRow[7] = data.tglReq || newRow[7];
-          newRow[8] = data.shift || newRow[8];
-          newRow[9] = data.waktuReq ? "'" + data.waktuReq : newRow[9];
-          newRow[10] = data.durasiReq || newRow[10];
-          newRow[13] = data.deskripsiReq || newRow[13];
-
-          newRow[15] = data.status || "On Progress";
-          newRow[16] = data.unit || "";
-          newRow[17] = data.gl || "";
-          newRow[18] = data.operator || "";
-          newRow[19] = data.rigger || "";
-
-          newRow[20] = ""; newRow[21] = ""; newRow[22] = ""; newRow[23] = "";
-          sheet.appendRow(newRow);
-
-        } else {
-          // Update biasa (tanpa resume)
-          let row = values[i];
-
-          if (data.tglReq) row[7] = data.tglReq;
-          if (data.shift) row[8] = data.shift;
-          if (data.waktuReq) row[9] = "'" + data.waktuReq;
-          if (data.durasiReq) row[10] = data.durasiReq;
-          if (data.deskripsiReq) row[13] = data.deskripsiReq;
-
-          if (data.status) row[15] = data.status;
-          if (data.unit) row[16] = data.unit;
-          if (data.gl) row[17] = data.gl;
-          if (data.operator) row[18] = data.operator;
-          if (data.rigger) row[19] = data.rigger;
-
-          if (data.status === 'Completed' || data.status === 'Canceled' || data.status === 'Pending') {
-            if (data.startAktual) row[20] = "'" + data.startAktual;
-            if (data.endAktual) row[21] = "'" + data.endAktual;
-            if (data.durasiAktual) row[22] = data.durasiAktual;
-            if (data.alasanDelay) row[23] = data.alasanDelay;
-          }
-
-          sheet.getRange(i + 1, 1, 1, row.length).setValues([row]);
-        }
-        break;
-      }
-    }
-
-    SpreadsheetApp.flush();
-    return { success: true, message: "Rekam jejak job berhasil diperbarui." };
-  } catch (error) {
-    return { success: false, message: error.toString() };
-  } finally {
-    lock.releaseLock();
-  }
-}
-
-function deleteOrder(id) {
-  const lock = LockService.getScriptLock();
-  try {
-    lock.waitLock(10000);
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    const sheet = ss.getSheetByName("Data_Orders") || ss.getSheetByName("Data Orders");
-    const values = sheet.getDataRange().getValues();
-    for (let i = 1; i < values.length; i++) {
-      if (String(values[i][0]) === String(id)) {
-        sheet.deleteRow(i + 1);
-        break;
-      }
-    }
-    SpreadsheetApp.flush();
-    return { success: true };
-  } catch (e) {
-    return { success: false, message: e.toString() };
-  } finally {
-    lock.releaseLock();
-  }
-}
-
-function addMasterItem(type, value) {
-  const lock = LockService.getScriptLock();
-  try {
-    lock.waitLock(10000);
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    let sheet = ss.getSheetByName("Master_Data") || ss.getSheetByName("Master Data");
-    if (!sheet) sheet = ss.insertSheet("Master_Data");
-    sheet.appendRow([type, value]);
-    SpreadsheetApp.flush();
-    return { success: true };
-  } catch (error) {
-    return { success: false, message: error.toString() };
-  } finally {
-    lock.releaseLock();
-  }
-}
-
-function deleteMasterItem(type, value) {
-  const lock = LockService.getScriptLock();
-  try {
-    lock.waitLock(10000);
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    const sheet = ss.getSheetByName("Master_Data") || ss.getSheetByName("Master Data");
-    if (sheet) {
-      const data = sheet.getDataRange().getValues();
-      for (let i = 0; i < data.length; i++) {
-        if (data[i][0] === type && String(data[i][1]) === String(value)) {
-          sheet.deleteRow(i + 1);
-          break;
-        }
-      }
-      SpreadsheetApp.flush();
-    }
-    return { success: true };
-  } catch (error) {
-    return { success: false, message: error.toString() };
-  } finally {
-    lock.releaseLock();
-  }
-}
-
-function updatePasswords(adminPass, ctPass) {
-  const lock = LockService.getScriptLock();
-  try {
-    lock.waitLock(10000);
-    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    const sheet = ss.getSheetByName("Master_Data") || ss.getSheetByName("Master Data");
-    if (sheet) {
-      const data = sheet.getDataRange().getValues();
-      for (let i = data.length - 1; i >= 0; i--) {
-        if (data[i][0] === 'Password') sheet.deleteRow(i + 1);
-      }
-      sheet.appendRow(['Password', 'Admin|' + adminPass]);
-      sheet.appendRow(['Password', 'CT|' + ctPass]);
-      SpreadsheetApp.flush();
-    }
-    return { success: true };
-  } catch (error) {
-    return { success: false, message: error.toString() };
-  } finally {
-    lock.releaseLock();
-  }
+  return sheet;
 }
 
 function doPost(e) {
   try {
-    let request = {};
-    if (e.postData && e.postData.contents) request = JSON.parse(e.postData.contents);
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const data = JSON.parse(e.postData.contents);
+    const action = data.action;
 
-    let action = request.action;
-    let result;
+    if (action === 'getAppData') return outputJSON(getAppData(ss));
+    if (action === 'saveOrder') return outputJSON(saveOrder(ss, data.payload));
+    if (action === 'updateJobRecord') return outputJSON(updateJobRecord(ss, data.payload));
+    if (action === 'deleteOrder') return outputJSON(deleteOrder(ss, data.payload));
+    if (action === 'addMasterItem') return outputJSON(addMasterItem(ss, data.cat, data.val));
+    if (action === 'deleteMasterItem') return outputJSON(deleteMasterItem(ss, data.cat, data.val));
+    if (action === 'updatePasswords') return outputJSON(updatePasswords(ss, data.admin, data.ct));
 
-    if (action === 'getAppData') result = getAppData();
-    else if (action === 'saveOrder') result = saveOrder(request.payload);
-    else if (action === 'updateJobRecord') result = updateJobRecord(request.payload);
-    else if (action === 'deleteOrder') result = deleteOrder(request.payload);
-    else if (action === 'addMasterItem') result = addMasterItem(request.cat, request.val);
-    else if (action === 'deleteMasterItem') result = deleteMasterItem(request.cat, request.val);
-    else if (action === 'updatePasswords') result = updatePasswords(request.admin, request.ct);
-    else result = { success: false, message: 'Action not found' };
-
-    return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
-  } catch (error) {
-    return ContentService.createTextOutput(JSON.stringify({ success: false, message: error.toString() })).setMimeType(ContentService.MimeType.JSON);
+    return outputJSON({ status: 'error', message: 'Unknown action' });
+  } catch (err) {
+    return outputJSON({ status: 'error', message: err.toString() });
   }
+}
+
+function outputJSON(data) {
+  return ContentService.createTextOutput(JSON.stringify(data)).setMimeType(ContentService.MimeType.JSON);
+}
+
+function getAppData(ss) {
+  const sheetMaster = getSheetSmart(ss, "Master_Data");
+  const sheetOrders = getSheetSmart(ss, "Data_Orders");
+
+  let masterData = sheetMaster.getDataRange().getValues();
+  let ordersData = sheetOrders.getDataRange().getValues();
+
+  // Smart Header Detection untuk Master
+  if (masterData.length > 0 && (masterData[0][0] === "Tipe_Data" || masterData[0][0].toString().toLowerCase() === "perusahaan" || masterData[0][0].toString().toLowerCase() === "kategori" || masterData[0][0].toString().toLowerCase() === "nama data")) {
+    if (masterData[0][1] && masterData[0][1].toString().toLowerCase() !== "pt. ppa") {
+      masterData.shift();
+    }
+  }
+
+  let parsedMaster = [];
+  masterData.forEach(row => {
+    if (row[0] && row[1]) {
+      parsedMaster.push([row[0].toString().trim(), row[1].toString().trim()]);
+    }
+  });
+
+  // Parse Orders
+  let parsedOrders = [];
+  if (ordersData.length > 1) {
+    let headers = ordersData[0];
+    for (let i = 1; i < ordersData.length; i++) {
+      let row = ordersData[i];
+      if (row[0]) {
+        let obj = {};
+        headers.forEach((header, index) => {
+          obj[header] = row[index] !== undefined ? row[index] : "";
+        });
+        parsedOrders.push(obj);
+      }
+    }
+  }
+
+  return { master: parsedMaster, orders: parsedOrders };
+}
+
+function saveOrder(ss, p) {
+  const sheet = getSheetSmart(ss, "Data_Orders");
+
+  if (sheet.getLastRow() === 0) {
+    const headers = ["ID_Order", "Timestamp", "Nama_Pemohon", "No_WA", "Perusahaan", "Departemen", "Section", "Tgl_Pelaksanaan", "Shift", "Waktu_Request", "Durasi_Request", "Lokasi", "Tujuan", "Deskripsi", "Foto_Base64", "Status", "Unit_CT", "GL", "Operator", "Rigger", "Waktu_Start_Aktual", "Waktu_End_Aktual", "Durasi_Aktual", "Alasan_Delay"];
+    sheet.appendRow(headers);
+  }
+
+  // Algoritma ID Super Cepat (hanya membaca baris terakhir)
+  const lr = sheet.getLastRow();
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const dd = String(today.getDate()).padStart(2, '0');
+
+  let newIdStr = `LIFT-${yyyy}${mm}${dd}-001`;
+  if (lr > 1) {
+    const lastId = sheet.getRange(lr, 1).getValue().toString();
+    if (lastId.startsWith(`LIFT-${yyyy}${mm}${dd}`)) {
+      const lastNum = parseInt(lastId.split('-')[2]);
+      if (!isNaN(lastNum)) {
+        newIdStr = `LIFT-${yyyy}${mm}${dd}-${String(lastNum + 1).padStart(3, '0')}`;
+      }
+    }
+  }
+
+  const ts = `${dd}/${mm}/${yyyy} ${String(today.getHours()).padStart(2, '0')}:${String(today.getMinutes()).padStart(2, '0')}`;
+
+  const newRow = [
+    newIdStr,
+    ts,
+    p.nama || "",
+    p.wa || "",
+    p.perusahaan || "",
+    p.departemen || "",
+    p.section || "",
+    p.tanggal || "",
+    p.shift || "",
+    p.waktu || "",
+    p.durasi || "",
+    p.lokasi || "",
+    p.tujuan || "",
+    p.deskripsi || "",
+    p.foto || "",
+    "Menunggu Validasi",
+    "", "", "", "", "", "", "", ""
+  ];
+
+  sheet.appendRow(newRow);
+  return { status: "success", id: newIdStr };
+}
+
+function updateJobRecord(ss, p) {
+  const sheet = getSheetSmart(ss, "Data_Orders");
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+
+  const idCol = headers.indexOf("ID_Order");
+  if (idCol === -1) return { status: "error", message: "Kolom ID_Order tidak ditemukan" };
+
+  const searchId = p.id.split('_')[0];
+
+  // Logika jika Job Di-Resume / Dipending (Membuat Baris Baru dengan riwayat)
+  if (p.isResuming) {
+    let oldRowIdx = -1;
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][idCol].toString().split('_')[0] === searchId) {
+        oldRowIdx = i;
+        break;
+      }
+    }
+    if (oldRowIdx !== -1) {
+      let newRowData = [...data[oldRowIdx]];
+
+      newRowData[idCol] = searchId + "_RESUME_" + Math.floor(Math.random() * 1000);
+
+      const mapUpdate = {
+        "Tgl_Pelaksanaan": p.tglReq, "Waktu_Request": p.waktuReq, "Durasi_Request": p.durasiReq,
+        "Deskripsi": p.deskripsiReq, "Status": p.status, "Unit_CT": p.unit, "GL": p.gl,
+        "Operator": p.operator, "Rigger": p.rigger, "Shift": p.shift,
+        "Waktu_Start_Aktual": "", "Waktu_End_Aktual": "", "Durasi_Aktual": "", "Alasan_Delay": ""
+      };
+
+      Object.keys(mapUpdate).forEach(key => {
+        let colIdx = headers.indexOf(key);
+        if (colIdx !== -1 && mapUpdate[key] !== undefined) newRowData[colIdx] = mapUpdate[key];
+      });
+
+      let statCol = headers.indexOf("Status");
+      if (statCol !== -1) sheet.getRange(oldRowIdx + 1, statCol + 1).setValue("Completed");
+
+      sheet.appendRow(newRowData);
+      return { status: "success", resumed: true };
+    }
+  }
+
+  // Update Normal
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][idCol].toString().split('_')[0] === searchId) {
+
+      const mapFields = {
+        "Tgl_Pelaksanaan": p.tglReq, "Waktu_Request": p.waktuReq, "Durasi_Request": p.durasiReq,
+        "Deskripsi": p.deskripsiReq, "Status": p.status, "Unit_CT": p.unit, "GL": p.gl,
+        "Operator": p.operator, "Rigger": p.rigger, "Shift": p.shift,
+        "Waktu_Start_Aktual": p.startAktual, "Waktu_End_Aktual": p.endAktual,
+        "Durasi_Aktual": p.durasiAktual, "Alasan_Delay": p.alasanDelay
+      };
+
+      Object.keys(mapFields).forEach(key => {
+        let colIdx = headers.indexOf(key);
+        if (colIdx !== -1 && mapFields[key] !== undefined) {
+          sheet.getRange(i + 1, colIdx + 1).setValue(mapFields[key]);
+        }
+      });
+
+      return { status: "success" };
+    }
+  }
+  return { status: "error", message: "Data Order tidak ditemukan" };
+}
+
+function deleteOrder(ss, id) {
+  const sheet = getSheetSmart(ss, "Data_Orders");
+  const data = sheet.getDataRange().getValues();
+
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] === id) {
+      sheet.deleteRow(i + 1);
+      return { status: "success" };
+    }
+  }
+  return { status: "error", message: "Order tidak ditemukan" };
+}
+
+function addMasterItem(ss, cat, val) {
+  const sheet = getSheetSmart(ss, "Master_Data");
+  sheet.appendRow([cat, val]);
+  return { status: "success" };
+}
+
+function deleteMasterItem(ss, cat, val) {
+  const sheet = getSheetSmart(ss, "Master_Data");
+  const data = sheet.getDataRange().getValues();
+  for (let i = 0; i < data.length; i++) {
+    if (data[i][0] == cat && data[i][1] == val) {
+      sheet.deleteRow(i + 1);
+      return { status: "success" };
+    }
+  }
+  return { status: "error", message: "Item tidak ditemukan" };
+}
+
+function updatePasswords(ss, adminPass, ctPass) {
+  const sheet = getSheetSmart(ss, "Master_Data");
+  const data = sheet.getDataRange().getValues();
+
+  for (let i = data.length - 1; i >= 0; i--) {
+    if (data[i][0] == 'Password') {
+      sheet.deleteRow(i + 1);
+    }
+  }
+
+  sheet.appendRow(['Password', 'Admin|' + adminPass]);
+  sheet.appendRow(['Password', 'CT|' + ctPass]);
+  return { status: "success" };
 }
