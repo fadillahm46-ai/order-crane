@@ -797,7 +797,7 @@
     </div>
 
     <script>
-        const GAS_API_URL = "https://script.google.com/macros/s/AKfycby_eBSajJXLVlsOuhPRehsUsWWENu0lkeMVMmrnlWH8LEmg7OQlpips-XmBM0CL44I7HA/exec";
+        const GAS_API_URL = "https://script.google.com/macros/s/AKfycbwCKAfs0ODOHJpmE5xy4GrTZ5vxW9X82O2Ub4wRt2xuDkZ-LRP80C_r2IcBSC990IJTzA/exec";
 
         let appData = { orders: [], master: [] };
         let charts = {};
@@ -815,7 +815,7 @@
         // ==========================================
         let deferredPrompt;
         window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault(); // Cegah prompt bawaan browser
+            e.preventDefault();
             deferredPrompt = e;
 
             const btnNav = document.getElementById('btn-install-app');
@@ -856,12 +856,25 @@
             let apiUrl = GAS_API_URL;
             if (apiUrl.endsWith('/dev')) apiUrl = apiUrl.replace('/dev', '/exec');
 
-            const response = await fetch(apiUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                body: JSON.stringify({ action: action, ...data })
-            });
-            return await response.json();
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({ action: action, ...data })
+                });
+
+                const rawText = await response.text();
+
+                try {
+                    return JSON.parse(rawText);
+                } catch (parseError) {
+                    console.error("❌ RESPONG GAGAL DARI GOOGLE:", rawText);
+                    throw new Error("Respon API tidak valid (Bukan JSON). Pastikan Anda telah melakukan 'Deployment Versi Baru' di Apps Script.");
+                }
+            } catch (networkError) {
+                console.error("❌ KONEKSI GAGAL:", networkError);
+                throw networkError;
+            }
         }
 
         function refreshAllViews() {
@@ -1097,7 +1110,6 @@
                     }
                 })
                 .catch(err => {
-                    // Suppress error message in console
                 });
         }
 
@@ -2462,31 +2474,14 @@
             processSyncQueue();
         }
 
-        // Registrasi Service Worker Dinamis untuk Offline Caching & PWA Installability
         if ('serviceWorker' in navigator) {
             const swCode = `
-                const CACHE_NAME = 'crane-ppa-v2';
-                self.addEventListener('install', e => {
-                    e.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(['/'])));
-                    self.skipWaiting();
-                });
-                self.addEventListener('activate', e => {
-                    e.waitUntil(caches.keys().then(keys => Promise.all(
-                        keys.map(key => { if(key !== CACHE_NAME) return caches.delete(key); })
-                    )));
-                    self.clients.claim();
-                });
-                self.addEventListener('fetch', e => {
-                    // Hindari cache request API ke Google atau operasi POST
-                    if (e.request.url.includes('script.google.com') || e.request.method !== 'GET') return;
-                    
-                    e.respondWith(
-                        fetch(e.request).catch(() => caches.match(e.request).then(res => res || caches.match('/')))
-                    );
-                });
+                self.addEventListener('install', e => self.skipWaiting());
+                self.addEventListener('activate', e => self.clients.claim());
+                self.addEventListener('fetch', e => {});
             `;
             const blob = new Blob([swCode], { type: 'application/javascript' });
-            navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(err => console.log('SW Reg Failed', err));
+            navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(() => { });
         }
 
         document.addEventListener('DOMContentLoaded', () => {
