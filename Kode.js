@@ -6,9 +6,6 @@
 const SHEET_ORDERS = "Data_Orders";
 const SHEET_MASTER = "Master_Data";
 
-/**
- * Fungsi utama untuk melayani Web App HTML
- */
 function doGet() {
   try {
     return HtmlService.createTemplateFromFile('index')
@@ -25,18 +22,13 @@ function doGet() {
   }
 }
 
-/**
- * Menyimpan order baru dari form pemohon ke Spreadsheet
- */
 function saveOrder(data) {
   const lock = LockService.getScriptLock();
   try {
-    // Tunggu maksimal 10 detik untuk mencegah bentrokan penulisan bersamaan
     lock.waitLock(10000);
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     let sheet = ss.getSheetByName(SHEET_ORDERS);
 
-    // Buat sheet jika belum ada
     if (!sheet) {
       sheet = ss.insertSheet(SHEET_ORDERS);
       sheet.appendRow([
@@ -52,44 +44,29 @@ function saveOrder(data) {
     const timestamp = Utilities.formatDate(new Date(), "GMT+8", "dd/MM/yyyy HH:mm");
 
     const lastRow = sheet.getLastRow();
-    let maxNum = 0;
+    let nextNum = 1;
 
+    // OPTIMASI KECEPATAN: Hanya cek ID di baris paling bawah, tidak perlu me-loop seluruh data
     if (lastRow > 1) {
-      const values = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
-      values.forEach(r => {
-        if (r[0] && String(r[0]).startsWith(`LIFT-${dateStr}-`)) {
-          let numPart = String(r[0]).split('-')[2];
-          if (numPart) {
-            let num = parseInt(numPart.split('_')[0]);
-            if (!isNaN(num) && num > maxNum) maxNum = num;
-          }
+      const lastIdStr = String(sheet.getRange(lastRow, 1).getValue());
+      if (lastIdStr.startsWith(`LIFT-${dateStr}-`)) {
+        let numPart = lastIdStr.split('-')[2];
+        if (numPart) {
+          let lastNum = parseInt(numPart.split('_')[0]);
+          if (!isNaN(lastNum)) nextNum = lastNum + 1;
         }
-      });
+      }
     }
 
-    const nextNum = maxNum > 0 ? maxNum + 1 : (lastRow > 1 ? lastRow : 1);
     const orderId = `LIFT-${dateStr}-${nextNum}`;
 
-    // Tanda petik tunggal (') memastikan jam tidak terkonversi otomatis ke desimal oleh Sheets
+    // Tanda petik tunggal (') mencegah Google Sheets mengubah format jam menjadi desimal otomatis
     const rowData = [
-      orderId,
-      timestamp,
-      data.nama || "",
-      data.wa || "",
-      data.perusahaan || "",
-      data.departemen || "",
-      data.section || "",
-      data.tanggal || "",
-      data.shift || "",
-      "'" + (data.waktu || "00:00"),
-      data.durasi || 0,
-      data.lokasi || "",
-      data.tujuan || "",
-      data.deskripsi || "",
-      data.foto || "",
-      "Menunggu Validasi",
-      "", "", "", "",
-      "", "", "", ""
+      orderId, timestamp, data.nama || "", data.wa || "", data.perusahaan || "",
+      data.departemen || "", data.section || "", data.tanggal || "", data.shift || "",
+      "'" + (data.waktu || "00:00"), data.durasi || 0, data.lokasi || "",
+      data.tujuan || "", data.deskripsi || "", data.foto || "",
+      "Menunggu Validasi", "", "", "", "", "", "", "", ""
     ];
 
     sheet.appendRow(rowData);
@@ -103,38 +80,30 @@ function saveOrder(data) {
   }
 }
 
-/**
- * Mengambil seluruh data master dan orderan untuk dikirim ke frontend
- */
 function getAppData() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
 
-  // 1. Ambil Data Master
   const sheetMaster = ss.getSheetByName(SHEET_MASTER);
   let masterData = [];
   if (sheetMaster) {
     const mData = sheetMaster.getDataRange().getValues();
-    mData.shift(); // Hapus header
+    mData.shift();
     masterData = mData.filter(r => r[0] && r[1]);
   }
 
-  // 2. Ambil Data Orders
   const sheetOrders = ss.getSheetByName(SHEET_ORDERS);
   let ordersData = [];
   if (sheetOrders && sheetOrders.getLastRow() > 1) {
     const oData = sheetOrders.getDataRange().getValues();
-    const headers = oData.shift(); // Ambil baris header
+    const headers = oData.shift();
 
     ordersData = oData.map(row => {
       let obj = {};
       headers.forEach((header, index) => {
         let val = row[index];
         if (val instanceof Date) {
-          if (header === 'Tgl_Pelaksanaan') {
-            obj[header] = Utilities.formatDate(val, "GMT+8", "yyyy-MM-dd");
-          } else {
-            obj[header] = Utilities.formatDate(val, "GMT+8", "HH:mm");
-          }
+          if (header === 'Tgl_Pelaksanaan') obj[header] = Utilities.formatDate(val, "GMT+8", "yyyy-MM-dd");
+          else obj[header] = Utilities.formatDate(val, "GMT+8", "HH:mm");
         } else if (typeof val === 'number' && header.includes('Waktu')) {
           let totalMinutes = Math.round(val * 24 * 60);
           let h = Math.floor(totalMinutes / 60).toString().padStart(2, '0');
@@ -151,9 +120,6 @@ function getAppData() {
   return JSON.stringify({ master: masterData, orders: ordersData });
 }
 
-/**
- * Perbarui status job/validasi menggunakan Batch Writing (setValues) agar super cepat
- */
 function updateJobRecord(data) {
   const lock = LockService.getScriptLock();
   try {
@@ -169,7 +135,6 @@ function updateJobRecord(data) {
       if (String(values[i][0]) === String(data.id)) {
 
         if (data.isResuming) {
-          // Jika melanjutkan job pending, tandai baris lama sebagai 'Completed'
           sheet.getRange(i + 1, 16).setValue('Completed');
 
           let baseId = String(data.id).split('_')[0];
@@ -197,15 +162,11 @@ function updateJobRecord(data) {
           newRow[18] = data.operator || "";
           newRow[19] = data.rigger || "";
 
-          newRow[20] = "";
-          newRow[21] = "";
-          newRow[22] = "";
-          newRow[23] = "";
-
+          newRow[20] = ""; newRow[21] = ""; newRow[22] = ""; newRow[23] = "";
           sheet.appendRow(newRow);
 
         } else {
-          // Modifikasi baris array di dalam memori JavaScript
+          // BATCH WRITE OPTIMIZATION
           let row = values[i];
 
           if (data.tglReq) row[7] = data.tglReq;
@@ -227,7 +188,6 @@ function updateJobRecord(data) {
             if (data.alasanDelay) row[23] = data.alasanDelay;
           }
 
-          // Tulis seluruh baris sekaligus dalam 1 kali pemanggilan API (Sangat Cepat!)
           sheet.getRange(i + 1, 1, 1, row.length).setValues([row]);
         }
         break;
@@ -243,9 +203,6 @@ function updateJobRecord(data) {
   }
 }
 
-/**
- * Menghapus order dari Spreadsheet
- */
 function deleteOrder(id) {
   const lock = LockService.getScriptLock();
   try {
@@ -269,9 +226,6 @@ function deleteOrder(id) {
   }
 }
 
-/**
- * Menambah item baru ke Data Master
- */
 function addMasterItem(type, value) {
   const lock = LockService.getScriptLock();
   try {
@@ -288,9 +242,6 @@ function addMasterItem(type, value) {
   }
 }
 
-/**
- * Menghapus item dari Data Master
- */
 function deleteMasterItem(type, value) {
   const lock = LockService.getScriptLock();
   try {
@@ -314,9 +265,6 @@ function deleteMasterItem(type, value) {
   }
 }
 
-/**
- * Memperbarui Password Akses Admin dan CT
- */
 function updatePasswords(adminPass, ctPass) {
   const lock = LockService.getScriptLock();
   try {
@@ -325,11 +273,8 @@ function updatePasswords(adminPass, ctPass) {
     const sheet = ss.getSheetByName(SHEET_MASTER);
     const data = sheet.getDataRange().getValues();
 
-    // Hapus password lama secara terbalik agar index row tidak bergeser
     for (let i = data.length - 1; i >= 1; i--) {
-      if (data[i][0] === 'Password') {
-        sheet.deleteRow(i + 1);
-      }
+      if (data[i][0] === 'Password') sheet.deleteRow(i + 1);
     }
 
     sheet.appendRow(['Password', 'Admin|' + adminPass]);
@@ -344,63 +289,25 @@ function updatePasswords(adminPass, ctPass) {
   }
 }
 
-/**
- * Utility untuk mereset atau menginisialisasi ulang Data Master default (opsional)
- */
 function resetMasterDataOtomatis() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = ss.getSheetByName(SHEET_MASTER);
   if (!sheet) sheet = ss.insertSheet(SHEET_MASTER);
-
   sheet.clear();
   sheet.getRange(1, 1, 1, 2).setValues([["Tipe_Data", "Nilai"]]);
   sheet.getRange(1, 1, 1, 2).setFontWeight("bold").setBackground("#c9daf8");
-
-  // Kosongkan seluruh daftar master data default
-  const mPerusahaan = [];
-  const mDept = [];
-  const mSec = [];
-  const mUnit = [];
-  const mGL = [];
-  const mOp = [];
-  const mRig = [];
-
-  let allData = [];
-  mPerusahaan.forEach(v => allData.push(["Perusahaan", v]));
-  mDept.forEach(v => allData.push(["Departemen", v]));
-  mSec.forEach(v => allData.push(["Section", v]));
-  mUnit.forEach(v => allData.push(["Unit CT", v]));
-  mGL.forEach(v => allData.push(["GL", v]));
-  mOp.forEach(v => allData.push(["Operator", v]));
-  mRig.forEach(v => allData.push(["Rigger", v]));
-  allData.push(["Password", "Admin|101010"], ["Password", "CT|191919"]);
-
-  if (allData.length > 0) {
-    sheet.getRange(2, 1, allData.length, 2).setValues(allData);
-  }
-
   SpreadsheetApp.flush();
-  return "Berhasil memuat 100% Data Master terbaru ke Database!";
+  return "Dikosongkan.";
 }
 
-/**
- * Menerima request dari luar Google (seperti Vercel) sebagai REST API
- */
 function doPost(e) {
   try {
     let request = {};
-    if (e.postData && e.postData.contents) {
-      request = JSON.parse(e.postData.contents);
-    }
+    if (e.postData && e.postData.contents) request = JSON.parse(e.postData.contents);
 
     let action = request.action;
+    if (action === 'getAppData') return ContentService.createTextOutput(getAppData()).setMimeType(ContentService.MimeType.JSON);
 
-    // Untuk Request Tarik Data
-    if (action === 'getAppData') {
-      return ContentService.createTextOutput(getAppData()).setMimeType(ContentService.MimeType.JSON);
-    }
-
-    // Untuk Request Kirim/Update Data
     let result;
     if (action === 'saveOrder') result = saveOrder(request.payload);
     else if (action === 'updateJobRecord') result = updateJobRecord(request.payload);

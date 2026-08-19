@@ -118,9 +118,9 @@
                         <i class="fa-solid fa-download mr-1"></i> <span class="hidden sm:inline">Instal App</span><span
                             class="sm:hidden">Instal</span>
                     </button>
-                    <div id="sync-status-badge"
-                        class="hidden sm:flex items-center bg-blue-800/50 px-3 py-1.5 rounded-full border border-blue-700/50 mr-4 select-none"
-                        title="Sistem tersinkronisasi otomatis di latar belakang">
+                    <div id="sync-status-badge" onclick="debugSync()"
+                        class="cursor-pointer hidden sm:flex items-center bg-blue-800/50 px-3 py-1.5 rounded-full border border-blue-700/50 mr-4 select-none hover:bg-blue-700/50 transition"
+                        title="Klik untuk cek/reset status sinkronisasi">
                         <span class="flex h-2.5 w-2.5 relative mr-2">
                             <span
                                 class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -334,6 +334,8 @@
                                 Foto)</span></label>
                         <input type="file" id="f_foto" accept="image/*" required
                             class="w-full text-sm text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 border border-slate-300 rounded-lg cursor-pointer bg-white">
+                        <p class="text-[10px] text-slate-400 mt-1"><i class="fa-solid fa-compress text-emerald-500"></i>
+                            Sistem akan mengompres foto secara otomatis agar pengiriman cepat.</p>
                     </div>
 
                     <button type="submit" id="btn-submit-order"
@@ -797,7 +799,7 @@
     </div>
 
     <script>
-        const GAS_API_URL = "https://script.google.com/macros/s/AKfycbwCKAfs0ODOHJpmE5xy4GrTZ5vxW9X82O2Ub4wRt2xuDkZ-LRP80C_r2IcBSC990IJTzA/exec";
+        const GAS_API_URL = "https://script.google.com/macros/s/AKfycby_eBSajJXLVlsOuhPRehsUsWWENu0lkeMVMmrnlWH8LEmg7OQlpips-XmBM0CL44I7HA/exec";
 
         let appData = { orders: [], master: [] };
         let charts = {};
@@ -852,16 +854,50 @@
             localStorage.setItem('craneSyncQueue', JSON.stringify(syncQueue));
         }
 
+        function debugSync() {
+            let qSize = syncQueue.length;
+            Swal.fire({
+                title: 'Diagnostic Sinkronisasi',
+                html: `Sistem Antrian Saat Ini: <b>${qSize} tugas menunggu</b><br>Status: <b>${isSyncingQueue ? 'Sedang Proses...' : 'Standby'}</b><br><br><span class="text-xs text-red-500">Gunakan tombol hapus jika indikator macet di 'SYNCING...' terlalu lama.</span>`,
+                icon: 'info',
+                showCancelButton: true,
+                confirmButtonText: 'Paksa Sinkronisasi',
+                cancelButtonText: 'Hapus / Reset Antrian',
+                cancelButtonColor: '#d33',
+                confirmButtonColor: '#0ea5e9'
+            }).then(res => {
+                if (res.isConfirmed) {
+                    if (qSize > 0) processSyncQueue(); else silentSync(true);
+                } else if (res.dismiss === Swal.DismissReason.cancel) {
+                    syncQueue = []; saveQueueToLocal();
+                    isSyncingQueue = false;
+                    Swal.fire('Direset', 'Antrian berhasil dikosongkan. Sistem sekarang normal.', 'success').then(() => {
+                        const badge = document.getElementById('sync-status-badge');
+                        if (badge) {
+                            badge.innerHTML = `<span class="flex h-2.5 w-2.5 relative mr-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span></span><span class="text-[10px] font-bold tracking-wider">LIVE SYNC</span>`;
+                            badge.className = "cursor-pointer hidden sm:flex items-center bg-blue-800/50 px-3 py-1.5 rounded-full border border-blue-700/50 mr-4 select-none hover:bg-blue-700/50 transition";
+                        }
+                        silentSync(true);
+                    });
+                }
+            });
+        }
+
         async function fetchGasAPI(action, data = {}) {
             let apiUrl = GAS_API_URL;
             if (apiUrl.endsWith('/dev')) apiUrl = apiUrl.replace('/dev', '/exec');
+
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 15000);
 
             try {
                 const response = await fetch(apiUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                    body: JSON.stringify({ action: action, ...data })
+                    body: JSON.stringify({ action: action, ...data }),
+                    signal: controller.signal
                 });
+                clearTimeout(timeoutId);
 
                 const rawText = await response.text();
 
@@ -869,9 +905,14 @@
                     return JSON.parse(rawText);
                 } catch (parseError) {
                     console.error("❌ RESPONG GAGAL DARI GOOGLE:", rawText);
-                    throw new Error("Respon API tidak valid (Bukan JSON). Pastikan Anda telah melakukan 'Deployment Versi Baru' di Apps Script.");
+                    Swal.fire({
+                        icon: 'error', title: 'Error API Google',
+                        text: "Sistem menerima data yang salah dari server. Harap pastikan Anda telah melakukan 'Deployment Baru' (New version) pada Apps Script."
+                    });
+                    throw new Error("Respon API tidak valid (Bukan JSON).");
                 }
             } catch (networkError) {
+                clearTimeout(timeoutId);
                 console.error("❌ KONEKSI GAGAL:", networkError);
                 throw networkError;
             }
@@ -897,8 +938,7 @@
 
             if (badge) {
                 badge.innerHTML = `<i class="fa-solid fa-cloud-arrow-up animate-bounce mr-1"></i> <span class="text-[10px] font-bold tracking-wider">SYNCING...</span>`;
-                badge.classList.remove('text-blue-100', 'bg-blue-800/50', 'border-blue-700/50');
-                badge.classList.add('text-orange-200', 'bg-orange-800/50', 'border-orange-700/50');
+                badge.className = "cursor-pointer hidden sm:flex items-center bg-orange-800/50 text-orange-200 px-3 py-1.5 rounded-full border border-orange-700/50 mr-4 select-none";
             }
 
             const handleSuccess = (res) => {
@@ -911,8 +951,7 @@
                 } else {
                     if (badge) {
                         badge.innerHTML = `<span class="flex h-2.5 w-2.5 relative mr-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span></span><span class="text-[10px] font-bold tracking-wider">LIVE SYNC</span>`;
-                        badge.classList.remove('text-orange-200', 'bg-orange-800/50', 'border-orange-700/50');
-                        badge.classList.add('text-blue-100', 'bg-blue-800/50', 'border-blue-700/50');
+                        badge.className = "cursor-pointer hidden sm:flex items-center bg-blue-800/50 text-blue-100 px-3 py-1.5 rounded-full border border-blue-700/50 mr-4 select-none hover:bg-blue-700/50 transition";
                     }
                     silentSync(true);
                 }
@@ -921,9 +960,16 @@
             const handleFail = (err) => {
                 isSyncingQueue = false;
                 if (badge) {
-                    badge.innerHTML = `<i class="fa-solid fa-cloud-xmark mr-1"></i> <span class="text-[10px] font-bold tracking-wider">OFFLINE (MENUNGGU)</span>`;
-                    badge.classList.remove('text-orange-200', 'bg-orange-800/50', 'border-orange-700/50');
-                    badge.classList.add('text-red-200', 'bg-red-800/50', 'border-red-700/50');
+                    badge.innerHTML = `<i class="fa-solid fa-cloud-xmark mr-1"></i> <span class="text-[10px] font-bold tracking-wider">OFFLINE (GAGAL)</span>`;
+                    badge.className = "cursor-pointer hidden sm:flex items-center bg-red-800/50 text-red-200 px-3 py-1.5 rounded-full border border-red-700/50 mr-4 select-none";
+                }
+
+                task.retry = (task.retry || 0) + 1;
+                if (task.retry >= 3) {
+                    syncQueue.shift();
+                    saveQueueToLocal();
+                    Swal.fire('Sinkronisasi Dibatalkan', 'Satu tugas gagal dikirim ke server setelah 3 kali percobaan dan terpaksa dibatalkan.', 'warning');
+                    setTimeout(() => processSyncQueue(), 2000);
                 }
             };
 
@@ -1107,9 +1153,20 @@
 
                         populateDropdowns();
                         refreshAllViews();
+
+                        const badge = document.getElementById('sync-status-badge');
+                        if (badge) {
+                            badge.innerHTML = `<span class="flex h-2.5 w-2.5 relative mr-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span></span><span class="text-[10px] font-bold tracking-wider">LIVE SYNC</span>`;
+                            badge.className = "cursor-pointer hidden sm:flex items-center bg-blue-800/50 text-blue-100 px-3 py-1.5 rounded-full border border-blue-700/50 mr-4 select-none hover:bg-blue-700/50 transition";
+                        }
                     }
                 })
                 .catch(err => {
+                    const badge = document.getElementById('sync-status-badge');
+                    if (badge) {
+                        badge.innerHTML = `<i class="fa-solid fa-cloud-xmark mr-1"></i> <span class="text-[10px] font-bold tracking-wider">CEK AKSES GAS</span>`;
+                        badge.className = "cursor-pointer hidden sm:flex items-center bg-red-800/50 text-red-200 px-3 py-1.5 rounded-full border border-red-700/50 mr-4 select-none";
+                    }
                 });
         }
 
@@ -1193,11 +1250,37 @@
             }
         }
 
+        // FUNGSI KOMPRESI FOTO OTOMATIS (Mencegah Google Sheets Lambat/Error)
+        function compressImage(file) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const MAX_WIDTH = 800; // Kompres maksimal lebar 800px
+                        let scaleSize = 1;
+                        if (img.width > MAX_WIDTH) {
+                            scaleSize = MAX_WIDTH / img.width;
+                        }
+                        canvas.width = img.width * scaleSize;
+                        canvas.height = img.height * scaleSize;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                        resolve(canvas.toDataURL('image/jpeg', 0.6)); // Kualitas 60%
+                    };
+                    img.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
         async function submitFormOrder(e) {
             e.preventDefault();
             const btn = document.getElementById('btn-submit-order');
             const orig = btn.innerHTML;
-            btn.innerHTML = '<i class="fa-solid fa-spinner animate-spin"></i> Menyimpan...';
+            btn.innerHTML = '<i class="fa-solid fa-spinner animate-spin"></i> Memproses Foto & Menyimpan...';
             btn.disabled = true;
 
             const fileInput = document.getElementById('f_foto');
@@ -1205,11 +1288,7 @@
 
             if (fileInput.files.length > 0) {
                 const file = fileInput.files[0];
-                fotoBase64 = await new Promise((resolve) => {
-                    const reader = new FileReader();
-                    reader.onloadend = () => resolve(reader.result);
-                    reader.readAsDataURL(file);
-                });
+                fotoBase64 = await compressImage(file);
             }
 
             const orderPayload = {
@@ -2476,12 +2555,26 @@
 
         if ('serviceWorker' in navigator) {
             const swCode = `
-                self.addEventListener('install', e => self.skipWaiting());
-                self.addEventListener('activate', e => self.clients.claim());
-                self.addEventListener('fetch', e => {});
+                const CACHE_NAME = 'crane-ppa-v3';
+                self.addEventListener('install', e => {
+                    e.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(['/'])));
+                    self.skipWaiting();
+                });
+                self.addEventListener('activate', e => {
+                    e.waitUntil(caches.keys().then(keys => Promise.all(
+                        keys.map(key => { if(key !== CACHE_NAME) return caches.delete(key); })
+                    )));
+                    self.clients.claim();
+                });
+                self.addEventListener('fetch', e => {
+                    if (e.request.url.includes('script.google.com') || e.request.method !== 'GET') return;
+                    e.respondWith(
+                        fetch(e.request).catch(() => caches.match(e.request).then(res => res || caches.match('/')))
+                    );
+                });
             `;
             const blob = new Blob([swCode], { type: 'application/javascript' });
-            navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(() => { });
+            navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(err => console.log('SW Reg Failed', err));
         }
 
         document.addEventListener('DOMContentLoaded', () => {
