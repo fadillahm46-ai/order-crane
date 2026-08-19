@@ -6,6 +6,9 @@
 const SHEET_ORDERS = "Data_Orders";
 const SHEET_MASTER = "Master_Data";
 
+// ID Spreadsheet Anda ditanamkan langsung di sini agar koneksi instan
+const SPREADSHEET_ID = "1F8MFhlDGGJ2Rora5wQgp7kNYSSaC3XbOPlRNwLNSLKM";
+
 function doGet() {
   try {
     return HtmlService.createTemplateFromFile('index')
@@ -26,7 +29,8 @@ function saveOrder(data) {
   const lock = LockService.getScriptLock();
   try {
     lock.waitLock(10000);
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    // Menggunakan ID langsung agar koneksi seketika
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     let sheet = ss.getSheetByName(SHEET_ORDERS);
 
     if (!sheet) {
@@ -81,7 +85,8 @@ function saveOrder(data) {
 }
 
 function getAppData() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  // Menggunakan ID langsung agar koneksi seketika
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
 
   const sheetMaster = ss.getSheetByName(SHEET_MASTER);
   let masterData = [];
@@ -124,7 +129,8 @@ function updateJobRecord(data) {
   const lock = LockService.getScriptLock();
   try {
     lock.waitLock(10000);
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    // Menggunakan ID langsung agar koneksi seketika
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     const sheet = ss.getSheetByName(SHEET_ORDERS);
     if (!sheet) throw new Error("Sheet order tidak ditemukan");
 
@@ -207,7 +213,8 @@ function deleteOrder(id) {
   const lock = LockService.getScriptLock();
   try {
     lock.waitLock(10000);
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    // Menggunakan ID langsung agar koneksi seketika
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     const sheet = ss.getSheetByName(SHEET_ORDERS);
     const values = sheet.getDataRange().getValues();
 
@@ -230,7 +237,8 @@ function addMasterItem(type, value) {
   const lock = LockService.getScriptLock();
   try {
     lock.waitLock(10000);
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    // Menggunakan ID langsung agar koneksi seketika
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     const sheet = ss.getSheetByName(SHEET_MASTER);
     sheet.appendRow([type, value]);
     SpreadsheetApp.flush();
@@ -246,7 +254,8 @@ function deleteMasterItem(type, value) {
   const lock = LockService.getScriptLock();
   try {
     lock.waitLock(10000);
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    // Menggunakan ID langsung agar koneksi seketika
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     const sheet = ss.getSheetByName(SHEET_MASTER);
     const data = sheet.getDataRange().getValues();
 
@@ -269,7 +278,8 @@ function updatePasswords(adminPass, ctPass) {
   const lock = LockService.getScriptLock();
   try {
     lock.waitLock(10000);
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    // Menggunakan ID langsung agar koneksi seketika
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     const sheet = ss.getSheetByName(SHEET_MASTER);
     const data = sheet.getDataRange().getValues();
 
@@ -290,7 +300,8 @@ function updatePasswords(adminPass, ctPass) {
 }
 
 function resetMasterDataOtomatis() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  // Menggunakan ID langsung agar koneksi seketika
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   let sheet = ss.getSheetByName(SHEET_MASTER);
   if (!sheet) sheet = ss.insertSheet(SHEET_MASTER);
   sheet.clear();
