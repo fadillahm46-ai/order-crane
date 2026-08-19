@@ -113,6 +113,11 @@
                             class="font-normal text-blue-200">PPA SITE BIB</span></span>
                 </div>
                 <div class="flex items-center">
+                    <button id="btn-install-app"
+                        class="hidden items-center bg-gradient-to-r from-yellow-400 to-yellow-500 text-yellow-900 px-3 py-1.5 rounded-full text-xs font-bold shadow-md hover:from-yellow-300 hover:to-yellow-400 mr-3 transition select-none border border-yellow-300">
+                        <i class="fa-solid fa-download mr-1"></i> <span class="hidden sm:inline">Instal App</span><span
+                            class="sm:hidden">Instal</span>
+                    </button>
                     <div id="sync-status-badge"
                         class="hidden sm:flex items-center bg-blue-800/50 px-3 py-1.5 rounded-full border border-blue-700/50 mr-4 select-none"
                         title="Sistem tersinkronisasi otomatis di latar belakang">
@@ -135,6 +140,14 @@
     <main class="flex-grow overflow-y-auto p-4 sm:p-6 lg:p-8">
 
         <div id="view-home" class="max-w-5xl mx-auto mt-6 sm:mt-10">
+            <div id="install-promo-container" class="hidden justify-center mb-8">
+                <button id="btn-install-home"
+                    class="animate-bounce flex items-center px-6 py-3 rounded-full text-sm font-extrabold bg-gradient-to-r from-yellow-400 to-yellow-500 text-yellow-900 shadow-xl border border-yellow-300 hover:from-yellow-300 hover:to-yellow-400 transition transform hover:scale-105 select-none outline-none focus:outline-none">
+                    <i class="fa-solid fa-mobile-screen-button mr-2 text-lg"></i> Instal Aplikasi Ini di HP / Laptop
+                    Anda
+                </button>
+            </div>
+
             <div class="space-y-8">
                 <!-- MENU 1 & 2: User/Pemohon -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 max-w-4xl mx-auto">
@@ -792,8 +805,7 @@
     </div>
 
     <script>
-        // MASUKKAN URL GOOGLE APPS SCRIPT WEB APP ANDA DI SINI
-        const GAS_API_URL = "MASUKKAN_URL_WEB_APP_GAS_DISINI";
+        const GAS_API_URL = "https://script.google.com/macros/s/AKfycby_eBSajJXLVlsOuhPRehsUsWWENu0lkeMVMmrnlWH8LEmg7OQlpips-XmBM0CL44I7HA/exec";
 
         let appData = { orders: [], master: [] };
         let charts = {};
@@ -807,6 +819,45 @@
         let lastDataHash = "";
 
         // ==========================================
+        // SISTEM PWA & INSTALL PROMPT
+        // ==========================================
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault(); // Cegah prompt bawaan browser
+            deferredPrompt = e;
+
+            const btnNav = document.getElementById('btn-install-app');
+            const btnHome = document.getElementById('btn-install-home');
+            const promoContainer = document.getElementById('install-promo-container');
+
+            if (btnNav) { btnNav.classList.remove('hidden'); btnNav.classList.add('flex'); }
+            if (promoContainer) { promoContainer.classList.remove('hidden'); promoContainer.classList.add('flex'); }
+
+            const installApp = async () => {
+                if (btnNav) { btnNav.classList.add('hidden'); btnNav.classList.remove('flex'); }
+                if (promoContainer) { promoContainer.classList.add('hidden'); promoContainer.classList.remove('flex'); }
+                if (deferredPrompt) {
+                    deferredPrompt.prompt();
+                    const { outcome } = await deferredPrompt.userChoice;
+                    console.log(`User response: ${outcome}`);
+                    deferredPrompt = null;
+                }
+            };
+
+            if (btnNav) btnNav.addEventListener('click', installApp);
+            if (btnHome) btnHome.addEventListener('click', installApp);
+        });
+
+        window.addEventListener('appinstalled', () => {
+            deferredPrompt = null;
+            const btnNav = document.getElementById('btn-install-app');
+            const promoContainer = document.getElementById('install-promo-container');
+            if (btnNav) { btnNav.classList.add('hidden'); btnNav.classList.remove('flex'); }
+            if (promoContainer) { promoContainer.classList.add('hidden'); promoContainer.classList.remove('flex'); }
+            Swal.fire({ icon: 'success', title: 'Aplikasi Terinstal!', text: 'Anda sekarang dapat membuka Crane PPA langsung dari layar utama perangkat Anda.', timer: 4000, showConfirmButton: false });
+        });
+
+        // ==========================================
         // SISTEM ANTRIAN & PENYIMPANAN LOKAL (OFFLINE-FIRST)
         // ==========================================
         let syncQueue = JSON.parse(localStorage.getItem('craneSyncQueue') || '[]');
@@ -817,20 +868,15 @@
         }
 
         async function fetchGasAPI(action, data = {}) {
-            if (!GAS_API_URL || GAS_API_URL === "MASUKKAN_URL_WEB_APP_GAS_DISINI") {
-                return null; // Force mock mode if URL is missing
-            }
-            try {
-                const response = await fetch(GAS_API_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                    body: JSON.stringify({ action: action, ...data })
-                });
-                return await response.json();
-            } catch (err) {
-                console.error("Fetch API Error:", err);
-                throw err;
-            }
+            let apiUrl = GAS_API_URL;
+            if (apiUrl.endsWith('/dev')) apiUrl = apiUrl.replace('/dev', '/exec');
+
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify({ action: action, ...data })
+            });
+            return await response.json();
         }
 
         function refreshAllViews() {
@@ -870,7 +916,7 @@
                         badge.classList.remove('text-orange-200', 'bg-orange-800/50', 'border-orange-700/50');
                         badge.classList.add('text-blue-100', 'bg-blue-800/50', 'border-blue-700/50');
                     }
-                    silentSync(true); // Tarik data fresh ID asli dari server
+                    silentSync(true);
                 }
             };
 
@@ -881,14 +927,7 @@
                     badge.classList.remove('text-orange-200', 'bg-orange-800/50', 'border-orange-700/50');
                     badge.classList.add('text-red-200', 'bg-red-800/50', 'border-red-700/50');
                 }
-                console.error('Background Sync Error:', err);
             };
-
-            if (!GAS_API_URL || GAS_API_URL === "MASUKKAN_URL_WEB_APP_GAS_DISINI") {
-                // Bypass for mock mode
-                setTimeout(() => handleSuccess({ success: true }), 500);
-                return;
-            }
 
             let apiPromise;
             if (task.type === 'CREATE_ORDER') apiPromise = fetchGasAPI('saveOrder', { payload: task.payload });
@@ -901,7 +940,6 @@
 
             apiPromise.then(res => handleSuccess(res)).catch(err => handleFail(err));
         }
-        // ==========================================
 
         function formatTglId(dateStr) {
             if (!dateStr) return '';
@@ -983,7 +1021,6 @@
         }
 
         function navigate(view) {
-            // Null safe class manipulations
             document.querySelectorAll('main > div').forEach(el => {
                 if (el && el.id && el.id.startsWith('view-')) {
                     el.classList.add('hide');
@@ -1056,15 +1093,13 @@
                 if (Swal.isVisible()) return;
                 if (syncQueue.length > 0) {
                     processSyncQueue();
-                    return; // Jangan tarik data jika sedang ada antrian lokal
+                    return;
                 }
             }
 
-            if (!GAS_API_URL || GAS_API_URL === "MASUKKAN_URL_WEB_APP_GAS_DISINI") return;
-
             fetchGasAPI('getAppData')
                 .then(parsed => {
-                    if (!parsed) return; // for mock mode
+                    if (!parsed) return;
                     let newHash = JSON.stringify(parsed);
                     if (lastDataHash !== newHash) {
                         lastDataHash = newHash;
@@ -1076,44 +1111,12 @@
                         refreshAllViews();
                     }
                 })
-                .catch(err => console.error('Silent Sync error:', err));
-        }
-
-        function loadMockDataIfNeeded() {
-            // MOCK DATA FOR DEMO PURPOSES (If GAS API is not configured)
-            let mockOrdersData = [];
-            let mockMasterData = [];
-
-            const mPerusahaan = ["PT. PPA", "PT. BIB", "PT. BOSTON", "PT. TRAKINDO"];
-            const mDept = ["PLANT", "PROD", "HCGA", "SHE"];
-            const mSec = ["Mechanic", "Warehouse", "Hauling", "Welding"];
-            const mUnit = ["CT2514", "CT2515", "CT52503", "CT52505"];
-            const mGL = ["ACHMAD HARIYANTO", "SUWARDI", "EKO PERMANA S."];
-            const mOp = ["ISKANDAR", "ABDURAHMAN", "RAHMAN"];
-            const mRig = ["KHOLIK SYAIFUDIN", "M.ADAM", "SUPIANI"];
-
-            mPerusahaan.forEach(v => mockMasterData.push(["Perusahaan", v]));
-            mDept.forEach(v => mockMasterData.push(["Departemen", v]));
-            mSec.forEach(v => mockMasterData.push(["Section", v]));
-            mUnit.forEach(v => mockMasterData.push(["Unit CT", v]));
-            mGL.forEach(v => mockMasterData.push(["GL", v]));
-            mOp.forEach(v => mockMasterData.push(["Operator", v]));
-            mRig.forEach(v => mockMasterData.push(["Rigger", v]));
-            mockMasterData.push(["Password", "Admin|101010"], ["Password", "CT|191919"]);
-
-            let nowStr = new Date().toLocaleDateString('en-GB') + " " + new Date().toLocaleTimeString('en-GB').substring(0, 5);
-
-            mockOrdersData.push(
-                { ID_Order: "LIFT-20260723-1", Timestamp: "23/07/2026 08:15", Nama_Pemohon: "Budi Santoso", No_WA: "08123456789", Perusahaan: "PT. PPA", Departemen: "PLANT", Section: "Mechanic", Tgl_Pelaksanaan: "2026-07-23", Shift: "Shift 1", Waktu_Request: "09:00", Durasi_Request: "4", Lokasi: "Pit A", Tujuan: "Workshop", Deskripsi: "Angkat mesin excavator", Foto_Base64: "", Status: "Completed", Unit_CT: "CT2514", GL: "ACHMAD HARIYANTO", Operator: "ISKANDAR", Rigger: "KHOLIK SYAIFUDIN", Waktu_Start_Aktual: "09:00", Waktu_End_Aktual: "14:00", Durasi_Aktual: "4", Alasan_Delay: "[Inspeksi: 08:45]" },
-                { ID_Order: "LIFT-20260723-4", Timestamp: "23/07/2026 12:30", Nama_Pemohon: "Tatang", No_WA: "08223344556", Perusahaan: "PT. PPA", Departemen: "PLANT", Section: "Welding", Tgl_Pelaksanaan: "2026-07-23", Shift: "Shift 1", Waktu_Request: "14:00", Durasi_Request: "2", Lokasi: "Workshop", Tujuan: "Pit B", Deskripsi: "Pindah bucket", Foto_Base64: "", Status: "On Progress", Unit_CT: "CT2514", GL: "ACHMAD HARIYANTO", Operator: "ISKANDAR", Rigger: "KHOLIK SYAIFUDIN", Waktu_Start_Aktual: "14:20", Waktu_End_Aktual: "", Durasi_Aktual: "", Alasan_Delay: "" }
-            );
-
-            appData.master = mockMasterData;
-            appData.orders = mockOrdersData;
+                .catch(err => {
+                    // Suppress error message in console
+                });
         }
 
         function loadAppData(isRefresh = false, callback = null) {
-            // 1. Muat secepat kilat dari Local Storage
             let localData = localStorage.getItem('craneAppData');
             if (localData && !isRefresh) {
                 try {
@@ -1126,43 +1129,26 @@
                 } catch (e) { }
             }
 
-            // 2. Tarik sinkronisasi dari Server
             if (syncQueue.length > 0) {
                 processSyncQueue();
                 if (!localData && callback) callback();
             } else {
-                if (!GAS_API_URL || GAS_API_URL === "MASUKKAN_URL_WEB_APP_GAS_DISINI") {
-                    if (!localData || isRefresh) {
-                        loadMockDataIfNeeded();
-                        populateDropdowns();
-                        refreshAllViews();
-                    }
-                    if (callback) callback();
-                    return;
-                }
-
                 fetchGasAPI('getAppData')
                     .then(parsed => {
                         if (!parsed) {
-                            if (!localData || isRefresh) {
-                                loadMockDataIfNeeded();
-                                populateDropdowns();
-                                refreshAllViews();
-                            }
                             if (callback) callback();
                             return;
                         }
                         lastDataHash = JSON.stringify(parsed);
                         appData.master = parsed.master || [];
                         appData.orders = parsed.orders || [];
-                        localStorage.setItem('craneAppData', JSON.stringify(appData)); // Simpan Cache
+                        localStorage.setItem('craneAppData', JSON.stringify(appData));
 
                         populateDropdowns();
                         refreshAllViews();
                         if (callback && (!localData || isRefresh)) callback();
                     })
                     .catch(err => {
-                        console.error('GAS API Error:', err);
                         if (!localData && callback) callback();
                     });
             }
@@ -1178,7 +1164,7 @@
             try {
                 if (document.execCommand('copy')) Swal.fire({ icon: 'success', title: 'Tersalin!', timer: 1500, showConfirmButton: false });
                 else Swal.fire({ icon: 'error', title: 'Gagal Menyalin', timer: 1500, showConfirmButton: false });
-            } catch (err) { console.error('Unable to copy', err); }
+            } catch (err) { }
             document.body.removeChild(textArea);
         }
 
@@ -1250,11 +1236,9 @@
                 Status: 'Menunggu Validasi', Unit_CT: '', GL: '', Operator: '', Rigger: '', Waktu_Start_Aktual: '', Waktu_End_Aktual: '', Durasi_Aktual: '', Alasan_Delay: ''
             };
 
-            // OPTIMISTIC UPDATE: Masukkan langsung ke array & simpan ke Cache
             appData.orders.unshift(newOrder);
             localStorage.setItem('craneAppData', JSON.stringify(appData));
 
-            // Masukkan Request ke Antrian Background Sync
             syncQueue.push({ type: 'CREATE_ORDER', payload: orderPayload });
             saveQueueToLocal();
             processSyncQueue();
@@ -1923,7 +1907,6 @@
                 startAktual: data.start, endAktual: data.end, durasiAktual: durasi, alasanDelay: alasanFinal
             };
 
-            // OPTIMISTIC UPDATE
             const idx = appData.orders.findIndex(o => o.ID_Order === order.ID_Order);
             if (idx > -1) {
                 appData.orders[idx].Status = data.status;
@@ -1937,7 +1920,6 @@
                 refreshAllViews();
             }
 
-            // Sync Queue
             syncQueue.push({ type: 'UPDATE_JOB', payload: payload });
             saveQueueToLocal();
             processSyncQueue();
@@ -2000,7 +1982,6 @@
         function sendDirectStatusUpdate(id, status, alasan) {
             const payload = { id: id, status: status, alasanDelay: alasan };
 
-            // OPTIMISTIC UPDATE
             const i = appData.orders.findIndex(o => o.ID_Order === id);
             if (i > -1) {
                 appData.orders[i].Status = status;
@@ -2009,7 +1990,6 @@
                 refreshAllViews();
             }
 
-            // Sync Queue
             syncQueue.push({ type: 'UPDATE_JOB', payload: payload });
             saveQueueToLocal();
             processSyncQueue();
@@ -2072,11 +2052,8 @@
                 }
 
                 let wReq = order.Waktu_Request || '';
-                if (wReq && String(wReq).includes('T')) {
-                    wReq = String(wReq).split('T')[1].substring(0, 5);
-                } else if (wReq) {
-                    wReq = String(wReq).substring(0, 5);
-                }
+                if (wReq && String(wReq).includes('T')) wReq = String(wReq).split('T')[1].substring(0, 5);
+                else if (wReq) wReq = String(wReq).substring(0, 5);
 
                 let rawAlasan = order.Alasan_Delay || '';
                 let inspeksiMatch = rawAlasan.match(/\[Inspeksi:\s*(.*?)\]/);
@@ -2262,7 +2239,6 @@
                 showCancelButton: true, confirmButtonColor: '#ef4444'
             }).then((res) => {
                 if (res.isConfirmed) {
-                    // OPTIMISTIC UPDATE
                     const idx = appData.orders.findIndex(o => o.ID_Order === id);
                     if (idx > -1) {
                         appData.orders.splice(idx, 1);
@@ -2272,7 +2248,6 @@
 
                     Swal.fire({ icon: 'success', title: 'Terhapus', timer: 1200, showConfirmButton: false });
 
-                    // Sync Queue
                     syncQueue.push({ type: 'DELETE_JOB', payload: id });
                     saveQueueToLocal();
                     processSyncQueue();
@@ -2291,11 +2266,8 @@
             let formatWaktu = '';
             if (rawWaktu) {
                 let strWaktu = String(rawWaktu);
-                if (strWaktu.includes('T')) {
-                    formatWaktu = strWaktu.split('T')[1].substring(0, 5);
-                } else {
-                    formatWaktu = strWaktu.substring(0, 5);
-                }
+                if (strWaktu.includes('T')) formatWaktu = strWaktu.split('T')[1].substring(0, 5);
+                else formatWaktu = strWaktu.substring(0, 5);
             }
             document.getElementById('v_edit_waktu').value = formatWaktu;
 
@@ -2370,7 +2342,6 @@
                 status: status, unit: unit, gl: gl, operator: op, rigger: rig, shift: updatedShift, isResuming: isResuming
             };
 
-            // OPTIMISTIC UPDATE
             const orderIndex = appData.orders.findIndex(o => o.ID_Order === id);
             if (orderIndex > -1) {
                 if (isResuming) {
@@ -2394,7 +2365,6 @@
             closeModal('modal-validasi');
             Swal.fire({ icon: 'success', title: 'Tersimpan', text: 'Perubahan tervalidasi & ditugaskan.', timer: 1500, showConfirmButton: false });
 
-            // Sync Queue
             syncQueue.push({ type: 'UPDATE_JOB', payload: payload });
             saveQueueToLocal();
             processSyncQueue();
@@ -2404,7 +2374,6 @@
             let adminP = document.getElementById('edit_pass_admin').value;
             let ctP = document.getElementById('edit_pass_ct').value;
 
-            // OPTIMISTIC UPDATE
             appData.master = appData.master.filter(m => m[0] !== 'Password');
             appData.master.push(['Password', 'Admin|' + adminP]);
             appData.master.push(['Password', 'CT|' + ctP]);
@@ -2413,7 +2382,6 @@
             Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Password Akses diupdate', timer: 1500, showConfirmButton: false });
             renderMasterData('Password');
 
-            // Sync Queue
             syncQueue.push({ type: 'MASTER_PASS', admin: adminP, ct: ctP });
             saveQueueToLocal();
             processSyncQueue();
@@ -2483,13 +2451,11 @@
                 preConfirm: (val) => { if (!val) Swal.showValidationMessage('Tidak boleh kosong'); return val; }
             }).then((res) => {
                 if (res.isConfirmed) {
-                    // OPTIMISTIC UPDATE
                     appData.master.push([currentMasterCategory, res.value]);
                     localStorage.setItem('craneAppData', JSON.stringify(appData));
                     renderMasterData(currentMasterCategory);
                     populateDropdowns();
 
-                    // Sync Queue
                     syncQueue.push({ type: 'MASTER_ADD', cat: currentMasterCategory, val: res.value });
                     saveQueueToLocal();
                     processSyncQueue();
@@ -2498,7 +2464,6 @@
         }
 
         function deleteMaster(val) {
-            // OPTIMISTIC UPDATE
             const idx = appData.master.findIndex(m => m[0] === currentMasterCategory && m[1] === val);
             if (idx > -1) {
                 appData.master.splice(idx, 1);
@@ -2507,20 +2472,36 @@
                 populateDropdowns();
             }
 
-            // Sync Queue
             syncQueue.push({ type: 'MASTER_DEL', cat: currentMasterCategory, val: val });
             saveQueueToLocal();
             processSyncQueue();
         }
 
+        // Registrasi Service Worker Dinamis untuk Offline Caching & PWA Installability
         if ('serviceWorker' in navigator) {
             const swCode = `
-                self.addEventListener('install', e => self.skipWaiting());
-                self.addEventListener('activate', e => self.clients.claim());
-                self.addEventListener('fetch', e => {});
+                const CACHE_NAME = 'crane-ppa-v2';
+                self.addEventListener('install', e => {
+                    e.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(['/'])));
+                    self.skipWaiting();
+                });
+                self.addEventListener('activate', e => {
+                    e.waitUntil(caches.keys().then(keys => Promise.all(
+                        keys.map(key => { if(key !== CACHE_NAME) return caches.delete(key); })
+                    )));
+                    self.clients.claim();
+                });
+                self.addEventListener('fetch', e => {
+                    // Hindari cache request API ke Google atau operasi POST
+                    if (e.request.url.includes('script.google.com') || e.request.method !== 'GET') return;
+                    
+                    e.respondWith(
+                        fetch(e.request).catch(() => caches.match(e.request).then(res => res || caches.match('/')))
+                    );
+                });
             `;
             const blob = new Blob([swCode], { type: 'application/javascript' });
-            navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(() => { });
+            navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(err => console.log('SW Reg Failed', err));
         }
 
         document.addEventListener('DOMContentLoaded', () => {
