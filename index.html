@@ -859,26 +859,25 @@
             let qSize = syncQueue.length;
             Swal.fire({
                 title: 'Diagnostic Sinkronisasi',
-                html: `Sistem Antrian Saat Ini: <b>${qSize} tugas menunggu</b><br>Status: <b>${isSyncingQueue ? 'Sedang Proses...' : 'Standby'}</b><br><br><span class="text-xs text-red-500">Gunakan tombol hapus jika indikator macet di 'SYNCING...' terlalu lama.</span>`,
+                html: `Antrian Saat Ini: <b>${qSize} tugas</b><br>Status: <b>${isSyncingBackground ? 'Fetching...' : 'Standby'}</b><br><br><span class="text-xs text-slate-500">Pilih tindakan di bawah ini jika data nyangkut:</span>`,
                 icon: 'info',
+                showDenyButton: true,
                 showCancelButton: true,
-                confirmButtonText: 'Paksa Sinkronisasi',
-                cancelButtonText: 'Hapus / Reset Antrian',
-                cancelButtonColor: '#d33',
-                confirmButtonColor: '#0ea5e9'
+                confirmButtonText: 'Paksa Sync',
+                denyButtonText: 'Reset Total Cache',
+                cancelButtonText: 'Batal',
+                confirmButtonColor: '#0ea5e9',
+                denyButtonColor: '#ef4444'
             }).then(res => {
                 if (res.isConfirmed) {
                     if (qSize > 0) processSyncQueue(); else silentSync(true);
-                } else if (res.dismiss === Swal.DismissReason.cancel) {
-                    syncQueue = []; saveQueueToLocal();
-                    isSyncingQueue = false;
-                    Swal.fire('Direset', 'Antrian berhasil dikosongkan. Sistem sekarang normal.', 'success').then(() => {
-                        const badge = document.getElementById('sync-status-badge');
-                        if (badge) {
-                            badge.innerHTML = `<span class="flex h-2.5 w-2.5 relative mr-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span></span><span class="text-[10px] font-bold tracking-wider">LIVE SYNC</span>`;
-                            badge.className = "cursor-pointer hidden sm:flex items-center bg-blue-800/50 px-3 py-1.5 rounded-full border border-blue-700/50 mr-4 select-none hover:bg-blue-700/50 transition";
-                        }
-                        silentSync(true);
+                } else if (res.isDenied) {
+                    // MENGHAPUS SEMUA CACHE MEMORI LOKAL
+                    localStorage.removeItem('craneAppData');
+                    localStorage.removeItem('craneSyncQueue');
+                    syncQueue = [];
+                    Swal.fire('Direset', 'Cache memori berhasil dibersihkan. Memuat ulang aplikasi...', 'success').then(() => {
+                        window.location.reload();
                     });
                 }
             });
@@ -959,9 +958,14 @@
 
                 task.retry = (task.retry || 0) + 1;
                 if (task.retry >= 3) {
-                    syncQueue.shift();
+                    syncQueue.shift(); // Buang task yang gagal
                     saveQueueToLocal();
-                    Swal.fire('Sinkronisasi Dibatalkan', 'Pastikan Deployment Google Apps Script Anda diset ke "Who has access: Anyone".', 'warning');
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Koneksi Ditolak Google',
+                        html: `<div class="text-sm text-left">Sistem gagal mengirim/menarik data ke Spreadsheet Anda.<br><br><b>Penyelesaian:</b><br>1. Buka Apps Script Anda.<br>2. Pilih fungsi <b>getAppData</b> lalu klik <b>Jalankan/Run</b>.<br>3. Berikan Izin / Otorisasi Google.<br>4. Lakukan <b>Deployment -> Versi Baru</b>.</div>`,
+                        confirmButtonColor: '#0ea5e9'
+                    });
                     setTimeout(() => processSyncQueue(), 2000);
                 }
             };
