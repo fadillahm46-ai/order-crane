@@ -10,11 +10,19 @@ const SHEET_MASTER = "Master_Data";
  * Fungsi utama untuk melayani Web App HTML
  */
 function doGet() {
-  return HtmlService.createTemplateFromFile('Index')
-    .evaluate()
-    .setTitle('Sistem Monitoring Crane Truck PPA')
-    .addMetaTag('viewport', 'width=device-width, initial-scale=1')
-    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  try {
+    return HtmlService.createTemplateFromFile('index')
+      .evaluate()
+      .setTitle('Sistem Monitoring Crane Truck PPA')
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  } catch (e) {
+    return HtmlService.createTemplateFromFile('Index')
+      .evaluate()
+      .setTitle('Sistem Monitoring Crane Truck PPA')
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  }
 }
 
 /**
@@ -24,25 +32,25 @@ function saveOrder(data) {
   const lock = LockService.getScriptLock();
   try {
     // Tunggu maksimal 10 detik untuk mencegah bentrokan penulisan bersamaan
-    lock.waitLock(10000); 
+    lock.waitLock(10000);
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     let sheet = ss.getSheetByName(SHEET_ORDERS);
-    
+
     // Buat sheet jika belum ada
     if (!sheet) {
       sheet = ss.insertSheet(SHEET_ORDERS);
       sheet.appendRow([
-        "ID_Order", "Timestamp", "Nama_Pemohon", "No_WA", "Perusahaan", 
-        "Departemen", "Section", "Tgl_Pelaksanaan", "Shift", "Waktu_Request", 
-        "Durasi_Request", "Lokasi", "Tujuan", "Deskripsi", "Foto_Base64", 
-        "Status", "Unit_CT", "GL", "Operator", "Rigger", 
+        "ID_Order", "Timestamp", "Nama_Pemohon", "No_WA", "Perusahaan",
+        "Departemen", "Section", "Tgl_Pelaksanaan", "Shift", "Waktu_Request",
+        "Durasi_Request", "Lokasi", "Tujuan", "Deskripsi", "Foto_Base64",
+        "Status", "Unit_CT", "GL", "Operator", "Rigger",
         "Waktu_Start_Aktual", "Waktu_End_Aktual", "Durasi_Aktual", "Alasan_Delay"
       ]);
     }
 
     const dateStr = Utilities.formatDate(new Date(), "GMT+8", "yyyyMMdd");
     const timestamp = Utilities.formatDate(new Date(), "GMT+8", "dd/MM/yyyy HH:mm");
-    
+
     const lastRow = sheet.getLastRow();
     let maxNum = 0;
 
@@ -61,29 +69,29 @@ function saveOrder(data) {
 
     const nextNum = maxNum > 0 ? maxNum + 1 : (lastRow > 1 ? lastRow : 1);
     const orderId = `LIFT-${dateStr}-${nextNum}`;
-    
+
     // Tanda petik tunggal (') memastikan jam tidak terkonversi otomatis ke desimal oleh Sheets
     const rowData = [
-      orderId, 
-      timestamp, 
-      data.nama || "", 
-      data.wa || "", 
-      data.perusahaan || "", 
-      data.departemen || "", 
-      data.section || "", 
-      data.tanggal || "", 
-      data.shift || "", 
-      "'" + (data.waktu || "00:00"), 
-      data.durasi || 0, 
-      data.lokasi || "", 
-      data.tujuan || "", 
-      data.deskripsi || "", 
-      data.foto || "", 
-      "Menunggu Validasi", 
-      "", "", "", "", 
+      orderId,
+      timestamp,
+      data.nama || "",
+      data.wa || "",
+      data.perusahaan || "",
+      data.departemen || "",
+      data.section || "",
+      data.tanggal || "",
+      data.shift || "",
+      "'" + (data.waktu || "00:00"),
+      data.durasi || 0,
+      data.lokasi || "",
+      data.tujuan || "",
+      data.deskripsi || "",
+      data.foto || "",
+      "Menunggu Validasi",
+      "", "", "", "",
       "", "", "", ""
     ];
-    
+
     sheet.appendRow(rowData);
     SpreadsheetApp.flush();
 
@@ -100,23 +108,23 @@ function saveOrder(data) {
  */
 function getAppData() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  
+
   // 1. Ambil Data Master
   const sheetMaster = ss.getSheetByName(SHEET_MASTER);
   let masterData = [];
   if (sheetMaster) {
     const mData = sheetMaster.getDataRange().getValues();
     mData.shift(); // Hapus header
-    masterData = mData.filter(r => r[0] && r[1]); 
+    masterData = mData.filter(r => r[0] && r[1]);
   }
-  
+
   // 2. Ambil Data Orders
   const sheetOrders = ss.getSheetByName(SHEET_ORDERS);
   let ordersData = [];
   if (sheetOrders && sheetOrders.getLastRow() > 1) {
     const oData = sheetOrders.getDataRange().getValues();
     const headers = oData.shift(); // Ambil baris header
-    
+
     ordersData = oData.map(row => {
       let obj = {};
       headers.forEach((header, index) => {
@@ -139,7 +147,7 @@ function getAppData() {
       return obj;
     });
   }
-  
+
   return JSON.stringify({ master: masterData, orders: ordersData });
 }
 
@@ -156,14 +164,14 @@ function updateJobRecord(data) {
 
     const range = sheet.getDataRange();
     const values = range.getValues();
-    
+
     for (let i = 1; i < values.length; i++) {
       if (String(values[i][0]) === String(data.id)) {
-        
+
         if (data.isResuming) {
           // Jika melanjutkan job pending, tandai baris lama sebagai 'Completed'
           sheet.getRange(i + 1, 16).setValue('Completed');
-          
+
           let baseId = String(data.id).split('_')[0];
           let maxSplit = 0;
           for (let j = 1; j < values.length; j++) {
@@ -176,14 +184,14 @@ function updateJobRecord(data) {
           let newId = baseId + "_" + (maxSplit + 1);
 
           let newRow = [...values[i]];
-          newRow[0] = newId; 
-          newRow[7] = data.tglReq || newRow[7]; 
+          newRow[0] = newId;
+          newRow[7] = data.tglReq || newRow[7];
           newRow[8] = data.shift || newRow[8];
           newRow[9] = data.waktuReq ? "'" + data.waktuReq : newRow[9];
           newRow[10] = data.durasiReq || newRow[10];
           newRow[13] = data.deskripsiReq || newRow[13];
 
-          newRow[15] = data.status || "On Progress"; 
+          newRow[15] = data.status || "On Progress";
           newRow[16] = data.unit || "";
           newRow[17] = data.gl || "";
           newRow[18] = data.operator || "";
@@ -195,28 +203,28 @@ function updateJobRecord(data) {
           newRow[23] = "";
 
           sheet.appendRow(newRow);
-          
+
         } else {
           // Modifikasi baris array di dalam memori JavaScript
           let row = values[i];
-          
+
           if (data.tglReq) row[7] = data.tglReq;
           if (data.shift) row[8] = data.shift;
-          if (data.waktuReq) row[9] = "'" + data.waktuReq; 
+          if (data.waktuReq) row[9] = "'" + data.waktuReq;
           if (data.durasiReq) row[10] = data.durasiReq;
           if (data.deskripsiReq) row[13] = data.deskripsiReq;
 
-          if (data.status) row[15] = data.status; 
-          if (data.unit) row[16] = data.unit; 
-          if (data.gl) row[17] = data.gl; 
-          if (data.operator) row[18] = data.operator; 
-          if (data.rigger) row[19] = data.rigger; 
-          
+          if (data.status) row[15] = data.status;
+          if (data.unit) row[16] = data.unit;
+          if (data.gl) row[17] = data.gl;
+          if (data.operator) row[18] = data.operator;
+          if (data.rigger) row[19] = data.rigger;
+
           if (data.status === 'Completed' || data.status === 'Canceled' || data.status === 'Pending') {
-            if (data.startAktual) row[20] = "'" + data.startAktual; 
-            if (data.endAktual) row[21] = "'" + data.endAktual;   
-            if (data.durasiAktual) row[22] = data.durasiAktual; 
-            if (data.alasanDelay) row[23] = data.alasanDelay; 
+            if (data.startAktual) row[20] = "'" + data.startAktual;
+            if (data.endAktual) row[21] = "'" + data.endAktual;
+            if (data.durasiAktual) row[22] = data.durasiAktual;
+            if (data.alasanDelay) row[23] = data.alasanDelay;
           }
 
           // Tulis seluruh baris sekaligus dalam 1 kali pemanggilan API (Sangat Cepat!)
@@ -245,7 +253,7 @@ function deleteOrder(id) {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = ss.getSheetByName(SHEET_ORDERS);
     const values = sheet.getDataRange().getValues();
-    
+
     for (let i = 1; i < values.length; i++) {
       if (String(values[i][0]) === String(id)) {
         sheet.deleteRow(i + 1);
@@ -254,7 +262,7 @@ function deleteOrder(id) {
     }
     SpreadsheetApp.flush();
     return { success: true };
-  } catch(e) {
+  } catch (e) {
     return { success: false, message: e.toString() };
   } finally {
     lock.releaseLock();
@@ -290,7 +298,7 @@ function deleteMasterItem(type, value) {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = ss.getSheetByName(SHEET_MASTER);
     const data = sheet.getDataRange().getValues();
-    
+
     for (let i = 1; i < data.length; i++) {
       if (data[i][0] === type && String(data[i][1]) === String(value)) {
         sheet.deleteRow(i + 1);
@@ -316,17 +324,17 @@ function updatePasswords(adminPass, ctPass) {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = ss.getSheetByName(SHEET_MASTER);
     const data = sheet.getDataRange().getValues();
-    
+
     // Hapus password lama secara terbalik agar index row tidak bergeser
     for (let i = data.length - 1; i >= 1; i--) {
       if (data[i][0] === 'Password') {
         sheet.deleteRow(i + 1);
       }
     }
-    
+
     sheet.appendRow(['Password', 'Admin|' + adminPass]);
     sheet.appendRow(['Password', 'CT|' + ctPass]);
-    
+
     SpreadsheetApp.flush();
     return { success: true };
   } catch (error) {
@@ -343,11 +351,11 @@ function resetMasterDataOtomatis() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = ss.getSheetByName(SHEET_MASTER);
   if (!sheet) sheet = ss.insertSheet(SHEET_MASTER);
-  
+
   sheet.clear();
   sheet.getRange(1, 1, 1, 2).setValues([["Tipe_Data", "Nilai"]]);
   sheet.getRange(1, 1, 1, 2).setFontWeight("bold").setBackground("#c9daf8");
-  
+
   // Kosongkan seluruh daftar master data default
   const mPerusahaan = [];
   const mDept = [];
@@ -356,7 +364,7 @@ function resetMasterDataOtomatis() {
   const mGL = [];
   const mOp = [];
   const mRig = [];
-  
+
   let allData = [];
   mPerusahaan.forEach(v => allData.push(["Perusahaan", v]));
   mDept.forEach(v => allData.push(["Departemen", v]));
@@ -366,11 +374,44 @@ function resetMasterDataOtomatis() {
   mOp.forEach(v => allData.push(["Operator", v]));
   mRig.forEach(v => allData.push(["Rigger", v]));
   allData.push(["Password", "Admin|101010"], ["Password", "CT|191919"]);
-  
+
   if (allData.length > 0) {
     sheet.getRange(2, 1, allData.length, 2).setValues(allData);
   }
-  
+
   SpreadsheetApp.flush();
-  return "Berhasil mereset Data Master (Kosong)!";
+  return "Berhasil memuat 100% Data Master terbaru ke Database!";
+}
+
+/**
+ * Menerima request dari luar Google (seperti Vercel) sebagai REST API
+ */
+function doPost(e) {
+  try {
+    let request = {};
+    if (e.postData && e.postData.contents) {
+      request = JSON.parse(e.postData.contents);
+    }
+
+    let action = request.action;
+
+    // Untuk Request Tarik Data
+    if (action === 'getAppData') {
+      return ContentService.createTextOutput(getAppData()).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // Untuk Request Kirim/Update Data
+    let result;
+    if (action === 'saveOrder') result = saveOrder(request.payload);
+    else if (action === 'updateJobRecord') result = updateJobRecord(request.payload);
+    else if (action === 'deleteOrder') result = deleteOrder(request.payload);
+    else if (action === 'addMasterItem') result = addMasterItem(request.cat, request.val);
+    else if (action === 'deleteMasterItem') result = deleteMasterItem(request.cat, request.val);
+    else if (action === 'updatePasswords') result = updatePasswords(request.admin, request.ct);
+    else result = { success: false, message: 'Action not found' };
+
+    return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({ success: false, message: error.toString() })).setMimeType(ContentService.MimeType.JSON);
+  }
 }
