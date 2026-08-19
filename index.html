@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -11,11 +12,14 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Crane PPA">
-    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2271/2271062.png">
-    
-    <!-- Base64 Encoded Manifest -->
-    <link rel="manifest" href="data:application/manifest+json;base64,eyJuYW1lIjoiU2lzdGVtIE1vbml0b3JpbmcgQ3JhbmUgVHJ1Y2sgUFBBIiwic2hvcnRfbmFtZSI6IkNyYW5lIFBQQSIsInN0YXJ0X3VybCI6Ii4iLCJkaXNwbGF5Ijoic3RhbmRhbG9uZSIsImJhY2tncm91bmRfY29sb3IiOiIjZjhmYWZjIiwidGhlbWVfY29sb3IiOiIjMGI0YzdjIiwiaWNvbnMiOlt7InNyYyI6Imh0dHBzOi8vY2RuLWljb25zLXBuZy5mbGF0aWNvbi5jb20vNTEyLzIyNzEvMjI3MTA2Mi5wbmciLCJzaXplcyI6IjUxMng1MTIiLCJ0eXBlIjoiaW1hZ2UvcG5nIn1dfQ==">
-    
+
+    <!-- Logo Apple / iPhone -->
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/870/870092.png">
+
+    <!-- Manifest PWA dengan Logo Truk Kuning -->
+    <link rel="manifest"
+        href='data:application/manifest+json,{"name":"Sistem Monitoring Crane Truck PPA","short_name":"Crane PPA","start_url":".","display":"standalone","background_color":"#f8fafc","theme_color":"#0b4c7c","icons":[{"src":"https://cdn-icons-png.flaticon.com/512/870/870092.png","sizes":"512x512","type":"image/png"},{"src":"https://cdn-icons-png.flaticon.com/512/870/870092.png","sizes":"192x192","type":"image/png"}]}'>
+
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -26,39 +30,98 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
-        .header-bg { background-color: #0b4c7c; }
-        .btn-primary { background-color: #0284c7; color: white; transition: all 0.2s; }
-        .btn-primary:hover { background-color: #0369a1; transform: translateY(-1px); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
-        .card-hover:hover { transform: translateY(-4px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); transition: all 0.3s ease; }
-        .hide { display: none !important; }
-        
-        .select2-container .select2-selection--single { height: 42px !important; border-color: #cbd5e1 !important; border-radius: 0.5rem !important; display: flex; align-items: center; }
-        .select2-container--default .select2-selection--single .select2-selection__rendered { line-height: 42px !important; padding-left: 1rem !important; color: #334155 !important; }
-        .select2-container--default .select2-selection--single .select2-selection__arrow { height: 40px !important; }
-        
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: #f1f1f1; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-        
-        th.cursor-pointer:hover { background-color: #e2e8f0; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+
+        .header-bg {
+            background-color: #0b4c7c;
+        }
+
+        .btn-primary {
+            background-color: #0284c7;
+            color: white;
+            transition: all 0.2s;
+        }
+
+        .btn-primary:hover {
+            background-color: #0369a1;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-hover:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .hide {
+            display: none !important;
+        }
+
+        .select2-container .select2-selection--single {
+            height: 42px !important;
+            border-color: #cbd5e1 !important;
+            border-radius: 0.5rem !important;
+            display: flex;
+            align-items: center;
+        }
+
+        .select2-container--default .select2-selection--single .select2-selection__rendered {
+            line-height: 42px !important;
+            padding-left: 1rem !important;
+            color: #334155 !important;
+        }
+
+        .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 40px !important;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        th.cursor-pointer:hover {
+            background-color: #e2e8f0;
+        }
     </style>
 </head>
+
 <body class="text-slate-800 antialiased h-screen flex flex-col">
 
     <nav class="header-bg text-white shadow-md z-10 sticky top-0">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between h-14">
-                <div class="flex items-center cursor-pointer select-none outline-none focus:outline-none" onclick="navigate('home')">
-                    <i class="fa-solid fa-truck-moving text-2xl text-yellow-400 mr-3"></i>
-                    <span class="font-bold text-lg tracking-wide">CRANE TRUCK <span class="font-normal text-blue-200">PPA SITE BIB</span></span>
+                <div class="flex items-center select-none outline-none focus:outline-none">
+                    <i class="fa-solid fa-truck-moving text-2xl text-yellow-400 mr-3 cursor-pointer hover:scale-110 transition-transform"
+                        onclick="debugSync()" title="Klik untuk Reset Cache Database"></i>
+                    <span class="font-bold text-lg tracking-wide cursor-pointer" onclick="navigate('home')">CRANE TRUCK
+                        <span class="font-normal text-blue-200">PPA SITE BIB</span></span>
                 </div>
                 <div class="flex items-center">
-                    <button id="btn-install-app" class="hidden items-center bg-gradient-to-r from-yellow-400 to-yellow-500 text-yellow-900 px-3 py-1.5 rounded-full text-xs font-bold shadow-md hover:from-yellow-300 hover:to-yellow-400 mr-3 transition select-none border border-yellow-300">
-                        <i class="fa-solid fa-download mr-1"></i> <span class="hidden sm:inline">Instal App</span><span class="sm:hidden">Instal</span>
+                    <button id="btn-install-app"
+                        class="hidden items-center bg-gradient-to-r from-yellow-400 to-yellow-500 text-yellow-900 px-3 py-1.5 rounded-full text-xs font-bold shadow-md hover:from-yellow-300 hover:to-yellow-400 mr-3 transition select-none border border-yellow-300">
+                        <i class="fa-solid fa-download mr-1"></i> <span class="hidden sm:inline">Instal App</span><span
+                            class="sm:hidden">Instal</span>
                     </button>
-                    <div id="user-badge" class="hidden bg-white/20 px-4 py-1.5 rounded-full text-sm font-medium backdrop-blur-sm border border-white/10 select-none">
+                    <div id="user-badge"
+                        class="hidden bg-white/20 px-4 py-1.5 rounded-full text-sm font-medium backdrop-blur-sm border border-white/10 select-none">
                         <i class="fa-regular fa-user mr-2"></i><span id="role-display">Role</span>
                     </div>
                 </div>
@@ -67,37 +130,57 @@
     </nav>
 
     <main class="flex-grow overflow-y-auto p-4 sm:p-6 lg:p-8">
-        
+
         <div id="view-home" class="max-w-5xl mx-auto mt-6 sm:mt-10">
             <div class="space-y-8">
                 <!-- MENU 1 & 2: User/Pemohon -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 max-w-4xl mx-auto">
                     <!-- Form Order Baru -->
-                    <div onclick="navigate('user-form')" class="card-hover bg-white rounded-3xl p-8 sm:p-10 shadow-lg border-2 border-blue-400 cursor-pointer text-center group select-none outline-none focus:outline-none relative overflow-hidden">
-                        <div class="absolute -right-10 -top-10 w-32 h-32 bg-blue-50 rounded-full opacity-50 group-hover:scale-150 transition-transform duration-700 ease-out"></div>
+                    <div onclick="navigate('user-form')"
+                        class="card-hover bg-white rounded-3xl p-8 sm:p-10 shadow-lg border-2 border-blue-400 cursor-pointer text-center group select-none outline-none focus:outline-none relative overflow-hidden">
+                        <div
+                            class="absolute -right-10 -top-10 w-32 h-32 bg-blue-50 rounded-full opacity-50 group-hover:scale-150 transition-transform duration-700 ease-out">
+                        </div>
                         <div class="relative z-10">
-                            <div class="w-20 h-20 sm:w-24 sm:h-24 mx-auto bg-blue-100 rounded-full flex items-center justify-center mb-5 shadow-inner group-hover:bg-blue-500 transition-colors duration-300">
-                                <i class="fa-solid fa-file-signature text-3xl sm:text-4xl text-blue-600 group-hover:text-white transition-colors duration-300"></i>
+                            <div
+                                class="w-20 h-20 sm:w-24 sm:h-24 mx-auto bg-blue-100 rounded-full flex items-center justify-center mb-5 shadow-inner group-hover:bg-blue-500 transition-colors duration-300">
+                                <i
+                                    class="fa-solid fa-file-signature text-3xl sm:text-4xl text-blue-600 group-hover:text-white transition-colors duration-300"></i>
                             </div>
-                            <h2 class="text-xl sm:text-2xl font-extrabold text-slate-800 mb-2 group-hover:text-blue-600 transition-colors">Buat Order Baru</h2>
-                            <p class="text-slate-500 text-xs sm:text-sm mb-5">Klik di sini untuk mengisi form permintaan unit Crane Truck.</p>
-                            <span class="inline-flex items-center px-4 py-2 rounded-full text-xs font-bold bg-blue-600 text-white shadow-md group-hover:bg-blue-700 transition">
-                                Form Order <i class="fa-solid fa-arrow-right ml-2 group-hover:translate-x-1 transition-transform"></i>
+                            <h2
+                                class="text-xl sm:text-2xl font-extrabold text-slate-800 mb-2 group-hover:text-blue-600 transition-colors">
+                                Buat Order Baru</h2>
+                            <p class="text-slate-500 text-xs sm:text-sm mb-5">Klik di sini untuk mengisi form permintaan
+                                unit Crane Truck.</p>
+                            <span
+                                class="inline-flex items-center px-4 py-2 rounded-full text-xs font-bold bg-blue-600 text-white shadow-md group-hover:bg-blue-700 transition">
+                                Form Order <i
+                                    class="fa-solid fa-arrow-right ml-2 group-hover:translate-x-1 transition-transform"></i>
                             </span>
                         </div>
                     </div>
 
                     <!-- Monitoring Order (Cek Orderan) -->
-                    <div onclick="navigate('user-monitor')" class="card-hover bg-white rounded-3xl p-8 sm:p-10 shadow-lg border-2 border-emerald-400 cursor-pointer text-center group select-none outline-none focus:outline-none relative overflow-hidden">
-                        <div class="absolute -left-10 -bottom-10 w-32 h-32 bg-emerald-50 rounded-full opacity-50 group-hover:scale-150 transition-transform duration-700 ease-out"></div>
+                    <div onclick="navigate('user-monitor')"
+                        class="card-hover bg-white rounded-3xl p-8 sm:p-10 shadow-lg border-2 border-emerald-400 cursor-pointer text-center group select-none outline-none focus:outline-none relative overflow-hidden">
+                        <div
+                            class="absolute -left-10 -bottom-10 w-32 h-32 bg-emerald-50 rounded-full opacity-50 group-hover:scale-150 transition-transform duration-700 ease-out">
+                        </div>
                         <div class="relative z-10">
-                            <div class="w-20 h-20 sm:w-24 sm:h-24 mx-auto bg-emerald-100 rounded-full flex items-center justify-center mb-5 shadow-inner group-hover:bg-emerald-500 transition-colors duration-300">
-                                <i class="fa-solid fa-magnifying-glass-chart text-3xl sm:text-4xl text-emerald-600 group-hover:text-white transition-colors duration-300"></i>
+                            <div
+                                class="w-20 h-20 sm:w-24 sm:h-24 mx-auto bg-emerald-100 rounded-full flex items-center justify-center mb-5 shadow-inner group-hover:bg-emerald-500 transition-colors duration-300">
+                                <i
+                                    class="fa-solid fa-magnifying-glass-chart text-3xl sm:text-4xl text-emerald-600 group-hover:text-white transition-colors duration-300"></i>
                             </div>
-                            <h2 class="text-xl sm:text-2xl font-extrabold text-slate-800 mb-2 group-hover:text-emerald-600 transition-colors">Cek Orderan</h2>
-                            <p class="text-slate-500 text-xs sm:text-sm mb-5">Pantau status eksekusi job, sisa waktu, dan progress CT.</p>
-                            <span class="inline-flex items-center px-4 py-2 rounded-full text-xs font-bold bg-emerald-600 text-white shadow-md group-hover:bg-emerald-700 transition">
-                                Monitor Job <i class="fa-solid fa-arrow-right ml-2 group-hover:translate-x-1 transition-transform"></i>
+                            <h2
+                                class="text-xl sm:text-2xl font-extrabold text-slate-800 mb-2 group-hover:text-emerald-600 transition-colors">
+                                Cek Orderan</h2>
+                            <p class="text-slate-500 text-xs sm:text-sm mb-5">Pantau status eksekusi job, sisa waktu,
+                                dan progress CT.</p>
+                            <span
+                                class="inline-flex items-center px-4 py-2 rounded-full text-xs font-bold bg-emerald-600 text-white shadow-md group-hover:bg-emerald-700 transition">
+                                Monitor Job <i
+                                    class="fa-solid fa-arrow-right ml-2 group-hover:translate-x-1 transition-transform"></i>
                             </span>
                         </div>
                     </div>
@@ -110,26 +193,32 @@
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-2xl mx-auto">
-                    <div onclick="promptLogin('Admin')" class="card-hover bg-white rounded-2xl p-6 shadow-sm border border-slate-200 cursor-pointer text-center group select-none outline-none focus:outline-none flex flex-col items-center justify-center hover:border-purple-300">
-                        <div class="w-14 h-14 bg-purple-50 rounded-full flex items-center justify-center mb-4 group-hover:bg-purple-100 transition-colors">
+                    <div onclick="promptLogin('Admin')"
+                        class="card-hover bg-white rounded-2xl p-6 shadow-sm border border-slate-200 cursor-pointer text-center group select-none outline-none focus:outline-none flex flex-col items-center justify-center hover:border-purple-300">
+                        <div
+                            class="w-14 h-14 bg-purple-50 rounded-full flex items-center justify-center mb-4 group-hover:bg-purple-100 transition-colors">
                             <i class="fa-solid fa-user-tie text-xl text-purple-500"></i>
                         </div>
                         <h2 class="text-lg font-bold text-slate-800 mb-1">Administrator</h2>
-                        <p class="text-slate-500 text-xs px-2">Dashboard analitik, kelola database order & pengaturan master</p>
+                        <p class="text-slate-500 text-xs px-2">Dashboard analitik, kelola database order & pengaturan
+                            master</p>
                     </div>
 
-                    <div onclick="promptLogin('CT')" class="card-hover bg-white rounded-2xl p-6 shadow-sm border border-slate-200 cursor-pointer text-center group select-none outline-none focus:outline-none flex flex-col items-center justify-center hover:border-orange-300">
-                        <div class="w-14 h-14 bg-orange-50 rounded-full flex items-center justify-center mb-4 group-hover:bg-orange-100 transition-colors">
+                    <div onclick="promptLogin('CT')"
+                        class="card-hover bg-white rounded-2xl p-6 shadow-sm border border-slate-200 cursor-pointer text-center group select-none outline-none focus:outline-none flex flex-col items-center justify-center hover:border-orange-300">
+                        <div
+                            class="w-14 h-14 bg-orange-50 rounded-full flex items-center justify-center mb-4 group-hover:bg-orange-100 transition-colors">
                             <i class="fa-solid fa-truck-fast text-xl text-orange-500"></i>
                         </div>
                         <h2 class="text-lg font-bold text-slate-800 mb-1">Tim Crane Truck</h2>
-                        <p class="text-slate-500 text-xs px-2">Kabin kontrol untuk update status eksekusi job di lapangan</p>
+                        <p class="text-slate-500 text-xs px-2">Kabin kontrol untuk update status eksekusi job di
+                            lapangan</p>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div id="view-user-form" class="hide max-w-3xl mx-auto">
+        <!--        <div id="view-user-form" class="hide max-w-3xl mx-auto">
             <div class="bg-white rounded-2xl shadow-lg overflow-hidden border border-slate-200">
                 <div class="bg-[#0ea5e9] p-5 text-white relative flex items-center justify-center">
                     <button type="button" onclick="navigate('home')" class="absolute left-5 w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition outline-none focus:outline-none select-none">
@@ -220,7 +309,7 @@
             </div>
         </div>
 
-        <div id="view-user-monitor" class="hide max-w-[90rem] mx-auto flex flex-col h-full">
+        <!--        <div id="view-user-monitor" class="hide max-w-[90rem] mx-auto flex flex-col h-full">
             <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6 flex flex-col md:flex-row justify-between items-center gap-4 shrink-0">
                 <div class="flex items-center">
                     <button type="button" onclick="navigate('home')" class="w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center mr-4 transition outline-none focus:outline-none select-none">
@@ -248,23 +337,30 @@
             </div>
 
             <!-- Tab Header (User) -->
-            <div class="flex flex-wrap gap-2 mb-4 border-b border-slate-200 pb-1">
-                <button type="button" onclick="switchUserMonitorTab('masuk')" id="user-tab-masuk" class="px-6 py-3 rounded-t-lg font-bold text-sm transition-colors border-b-4 bg-red-50 text-red-700 border-red-600 flex items-center gap-2 outline-none focus:outline-none select-none">
-                    <i class="fa-solid fa-inbox"></i> JOB MASUK <span id="user-count-masuk" class="bg-red-200 text-red-800 px-2 py-0.5 rounded text-xs ml-2">0</span>
-                </button>
-                <button type="button" onclick="switchUserMonitorTab('progress')" id="user-tab-progress" class="px-6 py-3 rounded-t-lg font-bold text-sm transition-colors border-b-4 bg-white text-slate-500 border-transparent hover:bg-slate-50 flex items-center gap-2 outline-none focus:outline-none select-none">
-                    <i class="fa-solid fa-truck-fast animate-pulse"></i> ON PROGRESS <span id="user-count-progress" class="bg-slate-200 text-slate-700 px-2 py-0.5 rounded text-xs ml-2">0</span>
-                </button>
-                <button type="button" onclick="switchUserMonitorTab('completed')" id="user-tab-completed" class="px-6 py-3 rounded-t-lg font-bold text-sm transition-colors border-b-4 bg-white text-slate-500 border-transparent hover:bg-slate-50 flex items-center gap-2 outline-none focus:outline-none select-none">
-                    <i class="fa-solid fa-check-double"></i> COMPLETED <span id="user-count-completed" class="bg-slate-200 text-slate-700 px-2 py-0.5 rounded text-xs ml-2">0</span>
-                </button>
-            </div>
-
-            <div id="user-cards-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 bg-slate-50 p-6 rounded-xl border border-slate-200 shadow-inner min-h-[60vh] max-h-[65vh] overflow-y-auto content-start">
-            </div>
+        <div class="flex flex-wrap gap-2 mb-4 border-b border-slate-200 pb-1">
+            <button type="button" onclick="switchUserMonitorTab('masuk')" id="user-tab-masuk"
+                class="px-6 py-3 rounded-t-lg font-bold text-sm transition-colors border-b-4 bg-red-50 text-red-700 border-red-600 flex items-center gap-2 outline-none focus:outline-none select-none">
+                <i class="fa-solid fa-inbox"></i> JOB MASUK <span id="user-count-masuk"
+                    class="bg-red-200 text-red-800 px-2 py-0.5 rounded text-xs ml-2">0</span>
+            </button>
+            <button type="button" onclick="switchUserMonitorTab('progress')" id="user-tab-progress"
+                class="px-6 py-3 rounded-t-lg font-bold text-sm transition-colors border-b-4 bg-white text-slate-500 border-transparent hover:bg-slate-50 flex items-center gap-2 outline-none focus:outline-none select-none">
+                <i class="fa-solid fa-truck-fast animate-pulse"></i> ON PROGRESS <span id="user-count-progress"
+                    class="bg-slate-200 text-slate-700 px-2 py-0.5 rounded text-xs ml-2">0</span>
+            </button>
+            <button type="button" onclick="switchUserMonitorTab('completed')" id="user-tab-completed"
+                class="px-6 py-3 rounded-t-lg font-bold text-sm transition-colors border-b-4 bg-white text-slate-500 border-transparent hover:bg-slate-50 flex items-center gap-2 outline-none focus:outline-none select-none">
+                <i class="fa-solid fa-check-double"></i> COMPLETED <span id="user-count-completed"
+                    class="bg-slate-200 text-slate-700 px-2 py-0.5 rounded text-xs ml-2">0</span>
+            </button>
         </div>
 
-        <div id="view-admin" class="hide max-w-[90rem] mx-auto space-y-6">
+        <div id="user-cards-container"
+            class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 bg-slate-50 p-6 rounded-xl border border-slate-200 shadow-inner min-h-[60vh] max-h-[65vh] overflow-y-auto content-start">
+        </div>
+        </div>
+
+        <!--        <div id="view-admin" class="hide max-w-[90rem] mx-auto space-y-6">
             
             <div class="flex flex-wrap gap-3 bg-white p-3 rounded-xl shadow-sm border border-slate-200">
                 <button type="button" onclick="switchAdminTab('dashboard')" id="tab-dashboard" class="flex-1 sm:flex-none px-4 py-2.5 rounded-lg font-semibold text-sm transition-colors bg-blue-600 text-white shadow-md outline-none focus:outline-none select-none">
@@ -336,7 +432,7 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <!--                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 col-span-1 md:col-span-1">
                         <h4 class="text-center text-sm font-bold text-slate-700 mb-2"><i class="fa-solid fa-chart-pie text-blue-500 mr-2"></i>Grafik Perusahaan</h4>
                         <div class="relative h-48 w-full"><canvas id="chartCompany"></canvas></div>
@@ -374,7 +470,7 @@
                 </div>
             </div>
 
-            <div id="admin-tab-database" class="hide bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col max-h-[75vh]">
+            <!--            <div id="admin-tab-database" class="hide bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col max-h-[75vh]">
                 <div class="p-4 border-b border-slate-200 bg-slate-50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shrink-0">
                     <h3 class="font-bold text-slate-700 text-lg whitespace-nowrap">Database Order Masuk</h3>
                     <div class="flex flex-wrap items-center gap-2 text-sm w-full sm:w-auto">
@@ -421,7 +517,7 @@
                 </div>
             </div>
 
-            <div id="admin-tab-master" class="hide bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <!--            <div id="admin-tab-master" class="hide bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                 <div class="p-5 border-b border-slate-200 bg-slate-50">
                     <h3 class="font-bold text-slate-700 mb-2 text-lg">Manajemen Data Master</h3>
                     <p class="text-xs text-slate-500">Pilih kategori data untuk mengelola daftar dropdown di aplikasi.</p>
@@ -457,7 +553,7 @@
             </div>
         </div>
 
-        <div id="view-ct-panel" class="hide max-w-[90rem] mx-auto flex flex-col h-full">
+        <!--        <div id="view-ct-panel" class="hide max-w-[90rem] mx-auto flex flex-col h-full">
             <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6 flex flex-col md:flex-row justify-between items-center gap-4 shrink-0">
                 <div class="flex items-center">
                     <button type="button" onclick="navigate('home')" class="w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center mr-4 transition outline-none focus:outline-none select-none">
@@ -499,7 +595,7 @@
 
     </main>
 
-    <div id="modal-validasi" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden z-50 items-center justify-center p-4">
+    <!--    <div id="modal-validasi" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden z-50 items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-visible">
             <div class="bg-blue-600 p-4 rounded-t-2xl text-white flex justify-between items-center">
                 <h3 class="font-bold text-lg"><i class="fa-solid fa-clipboard-check mr-2"></i> Validasi / Edit Penugasan</h3>
@@ -557,8 +653,8 @@
         </div>
     </div>
 
-    <script>
-        const GAS_API_URL = "https://script.google.com/macros/s/AKfycby_eBSajJXLVlsOuhPRehsUsWWENu0lkeMVMmrnlWH8LEmg7OQlpips-XmBM0CL44I7HA/exec";
+    <!--    <script>
+        const GAS_API_URL = "https://script.google.com/macros/s/AKfycbzl2274Y5uYpLP49NIs8DO4G5exv3ylVK2gOgd8CmLg1RKeMwWdQgF3KtwzwAZ9ogQSsA/exec";
 
         let appData = { orders: [], master: [] };
         let charts = {};
@@ -572,7 +668,7 @@
         let lastDataHash = "";
         
         let consecutiveSyncFails = 0;
-        let isSyncingBackground = false; // Pelindung agar request API tidak tumpang tindih
+        let isSyncingBackground = false; 
 
         // ==========================================
         // SISTEM PWA & INSTALL PROMPT
@@ -590,6 +686,7 @@
                 if (deferredPrompt) {
                     deferredPrompt.prompt();
                     const { outcome } = await deferredPrompt.userChoice;
+                    console.log(`User response: ${outcome}`);
                     deferredPrompt = null;
                 }
             };
@@ -614,27 +711,41 @@
             localStorage.setItem('craneSyncQueue', JSON.stringify(syncQueue));
         }
 
+        // FUNGSI DIAGNOSTIK DENGAN PELACAK DATA MASTER
         function debugSync() {
             let qSize = syncQueue.length;
+            let masterCount = appData.master ? appData.master.length : 0;
+            
             Swal.fire({
-                title: 'Diagnostic Sinkronisasi',
-                html: `Antrian Saat Ini: <b>${qSize} tugas</b><br>Status: <b>${isSyncingBackground ? 'Fetching...' : 'Standby'}</b><br><br><span class="text-xs text-slate-500">Pilih tindakan di bawah ini jika data nyangkut:</span>`,
+                title: 'Diagnostic System',
+                html: `
+                    <div class="text-left text-sm space-y-2 mb-4 bg-slate-50 p-3 rounded border border-slate-200">
+                        <div>Sistem Antrian Offline: <b>${qSize} tugas menunggu</b></div>
+                        <div>Status API: <b>${isSyncingQueue ? '<span class="text-blue-600">Sedang Mengirim...</span>' : '<span class="text-emerald-600">Standby (Lancar)</span>'}</b></div>
+                        <div class="border-t border-slate-200 pt-2 mt-2">
+                            <b>Status Baca Spreadsheet:</b><br>
+                            - Data Master: <b class="text-blue-700">${masterCount} baris terbaca</b><br>
+                            - Data Order: <b class="text-blue-700">${appData.orders.length} order terbaca</b>
+                        </div>
+                    </div>
+                    <span class="text-xs text-red-500 font-semibold"><i class="fa-solid fa-triangle-exclamation"></i> Klik Hapus Cache untuk memaksa aplikasi menarik ulang data dari Spreadsheet.</span>
+                `,
                 icon: 'info',
-                showDenyButton: true,
                 showCancelButton: true,
-                confirmButtonText: 'Paksa Sync',
-                denyButtonText: 'Reset Total Cache',
-                cancelButtonText: 'Batal',
-                confirmButtonColor: '#0ea5e9',
-                denyButtonColor: '#ef4444'
+                confirmButtonText: 'Paksa Sinkronisasi',
+                cancelButtonText: 'Hapus / Reset Total Cache',
+                cancelButtonColor: '#ef4444',
+                confirmButtonColor: '#0ea5e9'
             }).then(res => {
                 if(res.isConfirmed) {
                     if(qSize > 0) processSyncQueue(); else silentSync(true);
-                } else if(res.isDenied) {
+                } else if(res.dismiss === Swal.DismissReason.cancel) {
                     // MENGHAPUS SEMUA CACHE MEMORI LOKAL
                     localStorage.removeItem('craneAppData');
                     localStorage.removeItem('craneSyncQueue');
                     syncQueue = [];
+                    appData = { orders: [], master: [] };
+                    
                     Swal.fire('Direset', 'Cache memori berhasil dibersihkan. Memuat ulang aplikasi...', 'success').then(() => {
                         window.location.reload();
                     });
@@ -647,7 +758,7 @@
             if (apiUrl.endsWith('/dev')) apiUrl = apiUrl.replace('/dev', '/exec');
 
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 15000); 
+            const timeoutId = setTimeout(() => controller.abort(), 15000); // Batas waktu 15 detik
 
             try {
                 const response = await fetch(apiUrl, {
@@ -663,11 +774,14 @@
                 try {
                     return JSON.parse(rawText);
                 } catch (parseError) {
+                    // Hanya log di konsol diam-diam, hapus popup error swal.
+                    console.warn("GAS Respon bukan JSON. Kemungkinan perlu Deployment Baru.");
                     throw new Error("Respon API tidak valid (Bukan JSON).");
                 }
             } catch (networkError) {
                 clearTimeout(timeoutId);
-                throw networkError; 
+                // Hanya log di konsol diam-diam, hapus popup error swal.
+                throw networkError;
             }
         }
 
@@ -687,12 +801,6 @@
 
             isSyncingQueue = true;
             const task = syncQueue[0];
-            const badge = document.getElementById('sync-status-badge');
-
-            if(badge) {
-                badge.innerHTML = `<i class="fa-solid fa-cloud-arrow-up animate-bounce mr-1"></i> <span class="text-[10px] font-bold tracking-wider">SYNCING...</span>`;
-                badge.className = "cursor-pointer hidden sm:flex items-center bg-orange-800/50 text-orange-200 px-3 py-1.5 rounded-full border border-orange-700/50 mr-4 select-none";
-            }
 
             const handleSuccess = (res) => {
                 consecutiveSyncFails = 0; 
@@ -703,10 +811,6 @@
                 if (syncQueue.length > 0) {
                     processSyncQueue();
                 } else {
-                    if(badge) {
-                        badge.innerHTML = `<span class="flex h-2.5 w-2.5 relative mr-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span></span><span class="text-[10px] font-bold tracking-wider">LIVE SYNC</span>`;
-                        badge.className = "cursor-pointer hidden sm:flex items-center bg-blue-800/50 text-blue-100 px-3 py-1.5 rounded-full border border-blue-700/50 mr-4 select-none hover:bg-blue-700/50 transition";
-                    }
                     silentSync(true); 
                 }
             };
@@ -715,16 +819,11 @@
                 isSyncingQueue = false;
                 consecutiveSyncFails++;
                 
+                // Jika gagal lebih dari 3x, buang tugas tersebut agar tidak memblokir antrian lainnya
                 task.retry = (task.retry || 0) + 1;
                 if (task.retry >= 3) {
-                    syncQueue.shift(); // Buang task yang gagal
+                    syncQueue.shift();
                     saveQueueToLocal();
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Koneksi Ditolak Google',
-                        html: `<div class="text-sm text-left">Sistem gagal mengirim/menarik data ke Spreadsheet Anda.<br><br><b>Penyelesaian:</b><br>1. Buka Apps Script Anda.<br>2. Pilih fungsi <b>getAppData</b> lalu klik <b>Jalankan/Run</b>.<br>3. Berikan Izin / Otorisasi Google.<br>4. Lakukan <b>Deployment -> Versi Baru</b>.</div>`,
-                        confirmButtonColor: '#0ea5e9'
-                    });
                     setTimeout(() => processSyncQueue(), 2000);
                 }
             };
@@ -758,7 +857,7 @@
             $('.select2-search').select2({ width: '100%', placeholder: 'Ketik untuk mencari...', allowClear: true });
         }
 
-        function populateDropdowns() {
+        //        function populateDropdowns() {
             const buildOptions = (type, customSort = null) => {
                 let items = appData.master.filter(m => m[0] === type).map(m => m[1]);
                 if(Array.isArray(customSort)) {
@@ -881,18 +980,22 @@
             if(tab === 'master') renderMasterData(currentMasterCategory);
         }
 
-        function startAutoSync() {
+        //        function startAutoSync() {
             if(autoSyncInterval) clearInterval(autoSyncInterval);
-            autoSyncInterval = setInterval(silentSync, 1000); // SETTING INTERVAL 1 DETIK
+            autoSyncInterval = setInterval(silentSync, 1000); // INTERVAL 1 DETIK
         }
 
         function silentSync(force = false) {
-            if(isSyncingBackground) return; // Mencegah request menumpuk
+            if(isSyncingBackground) return; // Pelindung Anti-Overlap agar request 1 detik tidak menumpuk dan bikin LAG
 
             if(!force) {
                 const modal = document.getElementById('modal-validasi');
                 if (modal && !modal.classList.contains('hidden')) return;
                 if (Swal.isVisible()) return;
+                
+                // Stop sync sementara jika error bertubi-tubi (3x gagal beruntun)
+                if (consecutiveSyncFails >= 3) return;
+
                 if (syncQueue.length > 0) {
                     processSyncQueue();
                     return; 
@@ -915,18 +1018,10 @@
                         populateDropdowns(); 
                         refreshAllViews();
                     }
-                    
-                    const badge = document.getElementById('sync-status-badge');
-                    if(badge) {
-                        badge.innerHTML = `<span class="flex h-2.5 w-2.5 relative mr-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span></span><span class="text-[10px] font-bold tracking-wider">LIVE SYNC</span>`;
-                        badge.className = "cursor-pointer hidden sm:flex items-center bg-blue-800/50 text-blue-100 px-3 py-1.5 rounded-full border border-blue-700/50 mr-4 select-none hover:bg-blue-700/50 transition";
-                    }
                 })
                 .catch(err => {
                     isSyncingBackground = false;
                     consecutiveSyncFails++;
-                    // Tidak memunculkan pesan error / mengubah warna badge agar tidak spamming visual
-                    // Interval akan terus mencoba setiap 1 detik
                 });
         }
 
@@ -1011,7 +1106,7 @@
             }
         }
 
-        // FUNGSI KOMPRESI FOTO OTOMATIS
+        // FUNGSI KOMPRESI FOTO OTOMATIS SANGAT KECIL (< 100KB)
         function compressImage(file) {
             return new Promise((resolve) => {
                 const reader = new FileReader();
@@ -1019,7 +1114,8 @@
                     const img = new Image();
                     img.onload = () => {
                         const canvas = document.createElement('canvas');
-                        const MAX_WIDTH = 800; // Kompres maksimal lebar 800px
+                        // Kompres ekstrim maksimal lebar 600px untuk pengiriman kilat
+                        const MAX_WIDTH = 600; 
                         let scaleSize = 1;
                         if (img.width > MAX_WIDTH) {
                             scaleSize = MAX_WIDTH / img.width;
@@ -1029,7 +1125,8 @@
                         const ctx = canvas.getContext('2d');
                         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
                         
-                        resolve(canvas.toDataURL('image/jpeg', 0.6)); // Kualitas 60%
+                        // Kualitas dikurangi jadi 50%
+                        resolve(canvas.toDataURL('image/jpeg', 0.5)); 
                     };
                     img.src = event.target.result;
                 };
@@ -1037,7 +1134,7 @@
             });
         }
 
-        async function submitFormOrder(e) {
+        //        async function submitFormOrder(e) {
             e.preventDefault();
             const btn = document.getElementById('btn-submit-order');
             const orig = btn.innerHTML;
@@ -1049,7 +1146,7 @@
 
             if (fileInput.files.length > 0) {
                 const file = fileInput.files[0];
-                fotoBase64 = await compressImage(file);
+                fotoBase64 = await compressImage(file); // Proses kompresi
             }
 
             const orderPayload = {
@@ -1151,7 +1248,7 @@
             return new Date(dateParts[2], parseInt(dateParts[1])-1, dateParts[0], timeParts[0], timeParts[1]);
         }
 
-        function switchUserMonitorTab(tab) {
+        //        function switchUserMonitorTab(tab) {
             const tabs = ['masuk', 'progress', 'completed'];
             
             tabs.forEach(t => {
@@ -1323,7 +1420,7 @@
             return div;
         }
 
-        function startUserTimers() {
+        //        function startUserTimers() {
             stopUserTimers();
             userTimerInterval = setInterval(() => {
                 document.querySelectorAll('.user-live-timer').forEach(el => {
@@ -1362,7 +1459,7 @@
             if (userTimerInterval) clearInterval(userTimerInterval);
         }
 
-        function switchCtTab(tab) {
+        //        function switchCtTab(tab) {
             currentCtTab = tab;
             const tabs = ['progress', 'pending', 'completed', 'canceled'];
             
@@ -1546,7 +1643,7 @@
             return div;
         }
 
-        function promptCloseJob(id) {
+        //        function promptCloseJob(id) {
             const order = appData.orders.find(o => o.ID_Order === id);
             
             let opOptions = `<option value="">-- Pilih --</option>` + appData.master.filter(m=>m[0]==='Operator').map(m=>`<option value="${m[1]}" ${order.Operator===m[1]?'selected':''}>${m[1]}</option>`).join('');
@@ -1812,45 +1909,7 @@
             });
         }
 
-        function updateJobStatus(id, status) {
-            if(status === 'Canceled') {
-                Swal.fire({
-                    title: 'Batalkan Job?', text: 'Masukkan alasan pembatalan job ini:',
-                    input: 'textarea', icon: 'warning', showCancelButton: true, confirmButtonColor: '#ef4444',
-                    inputValidator: (value) => { if (!value || !value.trim()) return 'Alasan pembatalan wajib diisi!' }
-                }).then(r => {
-                    if(r.isConfirmed) {
-                        sendDirectStatusUpdate(id, status, "[Dibatalkan]: " + r.value.trim());
-                    }
-                });
-            } else {
-                sendDirectStatusUpdate(id, status, "");
-            }
-        }
-
-        function sendDirectStatusUpdate(id, status, alasan) {
-            const payload = { id: id, status: status, alasanDelay: alasan };
-
-            const i = appData.orders.findIndex(o=>o.ID_Order===id); 
-            if(i>-1) {
-                appData.orders[i].Status = status; 
-                if(alasan) appData.orders[i].Alasan_Delay = alasan;
-                localStorage.setItem('craneAppData', JSON.stringify(appData));
-                refreshAllViews();
-            }
-
-            syncQueue.push({ type: 'UPDATE_JOB', payload: payload });
-            saveQueueToLocal();
-            
-            // Resume if stopped
-            if(consecutiveSyncFails >= 3) {
-                consecutiveSyncFails = 0;
-                startAutoSync();
-            }
-            processSyncQueue();
-        }
-
-        function setDbSort(key) {
+        //        function setDbSort(key) {
             if(dbSort.key === key) {
                 dbSort.asc = !dbSort.asc;
             } else {
@@ -2006,7 +2065,7 @@
             if(badgeMenunggu) badgeMenunggu.innerText = waitingCount;
         }
 
-        function updateDashboard() {
+        //        function updateDashboard() {
             const fStart = document.getElementById('filter_start').value;
             const fEnd = document.getElementById('filter_end').value;
             const fShift = document.getElementById('filter_shift').value;
@@ -2070,7 +2129,7 @@
             });
         }
 
-        function exportToCSV() {
+        //        function exportToCSV() {
             let csv = 'No LIFT,Timestamp,Tanggal,Shift,Waktu Req,Durasi Req,Status,Perusahaan,Departemen,Section,Pemohon,Lokasi,Tujuan,Deskripsi,GL,Operator,Rigger,Unit CT,Waktu Start,Waktu End,Durasi Aktual,Kendala\n';
             appData.orders.forEach(o => {
                 let displayId = o.ID_Order.split('_')[0];
@@ -2237,7 +2296,7 @@
             processSyncQueue();
         }
 
-        function savePasswords() {
+        //        function savePasswords() {
             let adminP = document.getElementById('edit_pass_admin').value;
             let ctP = document.getElementById('edit_pass_ct').value;
             
@@ -2341,6 +2400,7 @@
         }
 
         function deleteMaster(val) {
+            // OPTIMISTIC UPDATE
             const idx = appData.master.findIndex(m => m[0] === currentMasterCategory && m[1] === val);
             if(idx > -1) {
                 appData.master.splice(idx, 1);
@@ -2349,17 +2409,13 @@
                 populateDropdowns();
             }
 
+            // Sync Queue
             syncQueue.push({ type: 'MASTER_DEL', cat: currentMasterCategory, val: val });
             saveQueueToLocal();
-            
-            if(consecutiveSyncFails >= 3) {
-                consecutiveSyncFails = 0;
-                startAutoSync();
-            }
             processSyncQueue();
         }
 
-        // Registrasi Service Worker Dinamis untuk Offline Caching & PWA Installability
+        //        // Registrasi Service Worker Dinamis untuk Offline Caching & PWA Installability
         if ('serviceWorker' in navigator) {
             const swCode = `
                 const CACHE_NAME = 'crane-ppa-v2';
@@ -2386,10 +2442,7 @@
             navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(err => console.log('SW Reg Failed', err));
         }
 
-        document.addEventListener('DOMContentLoaded', () => { 
-            loadAppData(false, () => navigate('home'));
-            startAutoSync(); 
-        });
+        document.addEventListener('DOMContentLoaded', () => { navigate('home'); startAutoSync(); });
     </script>
 </body>
 </html>

@@ -1,40 +1,22 @@
 // ==============================================================================
 // NAMA FILE: Kode.gs
-// DESKRIPSI: Backend Apps Script Teroptimasi untuk Form Order Crane PPA Site BIB
+// DESKRIPSI: Backend Apps Script Teroptimasi & Super Cerdas
 // ==============================================================================
 
-const SHEET_ORDERS = "Data_Orders";
-const SHEET_MASTER = "Master_Data";
-
-// ID Spreadsheet Anda ditanamkan langsung di sini agar koneksi instan
+// ID SPREADSHEET ANDA (HARDCODED UNTUK KECEPATAN MAKSIMAL)
 const SPREADSHEET_ID = "1F8MFhlDGGJ2Rora5wQgp7kNYSSaC3XbOPlRNwLNSLKM";
-
-function doGet() {
-  try {
-    return HtmlService.createTemplateFromFile('index')
-      .evaluate()
-      .setTitle('Sistem Monitoring Crane Truck PPA')
-      .addMetaTag('viewport', 'width=device-width, initial-scale=1')
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-  } catch (e) {
-    return HtmlService.createTemplateFromFile('Index')
-      .evaluate()
-      .setTitle('Sistem Monitoring Crane Truck PPA')
-      .addMetaTag('viewport', 'width=device-width, initial-scale=1')
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-  }
-}
 
 function saveOrder(data) {
   const lock = LockService.getScriptLock();
   try {
     lock.waitLock(10000);
-    // Menggunakan ID langsung agar koneksi seketika
     const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    let sheet = ss.getSheetByName(SHEET_ORDERS);
+
+    // Cek beberapa variasi nama sheet untuk Data_Orders
+    let sheet = ss.getSheetByName("Data_Orders") || ss.getSheetByName("Data Orders") || ss.getSheetByName("Orders");
 
     if (!sheet) {
-      sheet = ss.insertSheet(SHEET_ORDERS);
+      sheet = ss.insertSheet("Data_Orders");
       sheet.appendRow([
         "ID_Order", "Timestamp", "Nama_Pemohon", "No_WA", "Perusahaan",
         "Departemen", "Section", "Tgl_Pelaksanaan", "Shift", "Waktu_Request",
@@ -50,7 +32,6 @@ function saveOrder(data) {
     const lastRow = sheet.getLastRow();
     let nextNum = 1;
 
-    // OPTIMASI KECEPATAN: Hanya cek ID di baris paling bawah, tidak perlu me-loop seluruh data
     if (lastRow > 1) {
       const lastIdStr = String(sheet.getRange(lastRow, 1).getValue());
       if (lastIdStr.startsWith(`LIFT-${dateStr}-`)) {
@@ -64,7 +45,6 @@ function saveOrder(data) {
 
     const orderId = `LIFT-${dateStr}-${nextNum}`;
 
-    // Tanda petik tunggal (') mencegah Google Sheets mengubah format jam menjadi desimal otomatis
     const rowData = [
       orderId, timestamp, data.nama || "", data.wa || "", data.perusahaan || "",
       data.departemen || "", data.section || "", data.tanggal || "", data.shift || "",
@@ -85,18 +65,31 @@ function saveOrder(data) {
 }
 
 function getAppData() {
-  // Menggunakan ID langsung agar koneksi seketika
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
 
-  const sheetMaster = ss.getSheetByName(SHEET_MASTER);
+  // LOGIKA CERDAS: Mencari tab Master Data walau salah ketik spasi/underscore
+  let sheetMaster = ss.getSheetByName("Master_Data") || ss.getSheetByName("Master Data") || ss.getSheetByName("Data Master") || ss.getSheetByName("Master");
   let masterData = [];
+
   if (sheetMaster) {
     const mData = sheetMaster.getDataRange().getValues();
-    mData.shift();
+    if (mData.length > 0) {
+      // Cek apakah baris pertama itu Judul atau Data asli
+      const firstVal = String(mData[0][0]).toLowerCase().trim();
+      const validCategories = ["perusahaan", "departemen", "section", "unit ct", "gl", "operator", "rigger", "password"];
+
+      // Jika baris pertama BUKAN kategori valid di atas, berarti itu adalah Header (Judul), kita hapus.
+      // Jika baris pertama ADALAH kategori, berarti user tidak pakai judul, jangan dihapus.
+      if (!validCategories.includes(firstVal)) {
+        mData.shift();
+      }
+    }
+    // Hanya simpan baris yang ada isinya di kolom A dan B
     masterData = mData.filter(r => r[0] && r[1]);
   }
 
-  const sheetOrders = ss.getSheetByName(SHEET_ORDERS);
+  // Logika baca tabel order
+  let sheetOrders = ss.getSheetByName("Data_Orders") || ss.getSheetByName("Data Orders") || ss.getSheetByName("Orders");
   let ordersData = [];
   if (sheetOrders && sheetOrders.getLastRow() > 1) {
     const oData = sheetOrders.getDataRange().getValues();
@@ -122,16 +115,15 @@ function getAppData() {
     });
   }
 
-  return JSON.stringify({ master: masterData, orders: ordersData });
+  return { master: masterData, orders: ordersData };
 }
 
 function updateJobRecord(data) {
   const lock = LockService.getScriptLock();
   try {
     lock.waitLock(10000);
-    // Menggunakan ID langsung agar koneksi seketika
     const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    const sheet = ss.getSheetByName(SHEET_ORDERS);
+    const sheet = ss.getSheetByName("Data_Orders") || ss.getSheetByName("Data Orders");
     if (!sheet) throw new Error("Sheet order tidak ditemukan");
 
     const range = sheet.getDataRange();
@@ -141,8 +133,10 @@ function updateJobRecord(data) {
       if (String(values[i][0]) === String(data.id)) {
 
         if (data.isResuming) {
+          // Tutup Job Lama
           sheet.getRange(i + 1, 16).setValue('Completed');
 
+          // Buat baris baru untuk resume
           let baseId = String(data.id).split('_')[0];
           let maxSplit = 0;
           for (let j = 1; j < values.length; j++) {
@@ -172,7 +166,7 @@ function updateJobRecord(data) {
           sheet.appendRow(newRow);
 
         } else {
-          // BATCH WRITE OPTIMIZATION
+          // Update biasa (tanpa resume)
           let row = values[i];
 
           if (data.tglReq) row[7] = data.tglReq;
@@ -213,11 +207,9 @@ function deleteOrder(id) {
   const lock = LockService.getScriptLock();
   try {
     lock.waitLock(10000);
-    // Menggunakan ID langsung agar koneksi seketika
     const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    const sheet = ss.getSheetByName(SHEET_ORDERS);
+    const sheet = ss.getSheetByName("Data_Orders") || ss.getSheetByName("Data Orders");
     const values = sheet.getDataRange().getValues();
-
     for (let i = 1; i < values.length; i++) {
       if (String(values[i][0]) === String(id)) {
         sheet.deleteRow(i + 1);
@@ -237,9 +229,9 @@ function addMasterItem(type, value) {
   const lock = LockService.getScriptLock();
   try {
     lock.waitLock(10000);
-    // Menggunakan ID langsung agar koneksi seketika
     const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    const sheet = ss.getSheetByName(SHEET_MASTER);
+    let sheet = ss.getSheetByName("Master_Data") || ss.getSheetByName("Master Data");
+    if (!sheet) sheet = ss.insertSheet("Master_Data");
     sheet.appendRow([type, value]);
     SpreadsheetApp.flush();
     return { success: true };
@@ -254,18 +246,18 @@ function deleteMasterItem(type, value) {
   const lock = LockService.getScriptLock();
   try {
     lock.waitLock(10000);
-    // Menggunakan ID langsung agar koneksi seketika
     const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    const sheet = ss.getSheetByName(SHEET_MASTER);
-    const data = sheet.getDataRange().getValues();
-
-    for (let i = 1; i < data.length; i++) {
-      if (data[i][0] === type && String(data[i][1]) === String(value)) {
-        sheet.deleteRow(i + 1);
-        break;
+    const sheet = ss.getSheetByName("Master_Data") || ss.getSheetByName("Master Data");
+    if (sheet) {
+      const data = sheet.getDataRange().getValues();
+      for (let i = 0; i < data.length; i++) {
+        if (data[i][0] === type && String(data[i][1]) === String(value)) {
+          sheet.deleteRow(i + 1);
+          break;
+        }
       }
+      SpreadsheetApp.flush();
     }
-    SpreadsheetApp.flush();
     return { success: true };
   } catch (error) {
     return { success: false, message: error.toString() };
@@ -278,19 +270,17 @@ function updatePasswords(adminPass, ctPass) {
   const lock = LockService.getScriptLock();
   try {
     lock.waitLock(10000);
-    // Menggunakan ID langsung agar koneksi seketika
     const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    const sheet = ss.getSheetByName(SHEET_MASTER);
-    const data = sheet.getDataRange().getValues();
-
-    for (let i = data.length - 1; i >= 1; i--) {
-      if (data[i][0] === 'Password') sheet.deleteRow(i + 1);
+    const sheet = ss.getSheetByName("Master_Data") || ss.getSheetByName("Master Data");
+    if (sheet) {
+      const data = sheet.getDataRange().getValues();
+      for (let i = data.length - 1; i >= 0; i--) {
+        if (data[i][0] === 'Password') sheet.deleteRow(i + 1);
+      }
+      sheet.appendRow(['Password', 'Admin|' + adminPass]);
+      sheet.appendRow(['Password', 'CT|' + ctPass]);
+      SpreadsheetApp.flush();
     }
-
-    sheet.appendRow(['Password', 'Admin|' + adminPass]);
-    sheet.appendRow(['Password', 'CT|' + ctPass]);
-
-    SpreadsheetApp.flush();
     return { success: true };
   } catch (error) {
     return { success: false, message: error.toString() };
@@ -299,28 +289,16 @@ function updatePasswords(adminPass, ctPass) {
   }
 }
 
-function resetMasterDataOtomatis() {
-  // Menggunakan ID langsung agar koneksi seketika
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  let sheet = ss.getSheetByName(SHEET_MASTER);
-  if (!sheet) sheet = ss.insertSheet(SHEET_MASTER);
-  sheet.clear();
-  sheet.getRange(1, 1, 1, 2).setValues([["Tipe_Data", "Nilai"]]);
-  sheet.getRange(1, 1, 1, 2).setFontWeight("bold").setBackground("#c9daf8");
-  SpreadsheetApp.flush();
-  return "Dikosongkan.";
-}
-
 function doPost(e) {
   try {
     let request = {};
     if (e.postData && e.postData.contents) request = JSON.parse(e.postData.contents);
 
     let action = request.action;
-    if (action === 'getAppData') return ContentService.createTextOutput(getAppData()).setMimeType(ContentService.MimeType.JSON);
-
     let result;
-    if (action === 'saveOrder') result = saveOrder(request.payload);
+
+    if (action === 'getAppData') result = getAppData();
+    else if (action === 'saveOrder') result = saveOrder(request.payload);
     else if (action === 'updateJobRecord') result = updateJobRecord(request.payload);
     else if (action === 'deleteOrder') result = deleteOrder(request.payload);
     else if (action === 'addMasterItem') result = addMasterItem(request.cat, request.val);
