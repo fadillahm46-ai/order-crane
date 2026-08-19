@@ -812,6 +812,9 @@
         let autoSyncInterval = null;
         let lastDataHash = "";
 
+        let consecutiveSyncFails = 0;
+        let isSyncingBackground = false; // Pelindung agar request API tidak tumpang tindih
+
         // ==========================================
         // SISTEM PWA & INSTALL PROMPT
         // ==========================================
@@ -821,7 +824,6 @@
             deferredPrompt = e;
 
             const btnNav = document.getElementById('btn-install-app');
-
             if (btnNav) { btnNav.classList.remove('hidden'); btnNav.classList.add('flex'); }
 
             const installApp = async () => {
@@ -829,7 +831,6 @@
                 if (deferredPrompt) {
                     deferredPrompt.prompt();
                     const { outcome } = await deferredPrompt.userChoice;
-                    console.log(`User response: ${outcome}`);
                     deferredPrompt = null;
                 }
             };
@@ -904,16 +905,10 @@
                 try {
                     return JSON.parse(rawText);
                 } catch (parseError) {
-                    console.error("❌ RESPONG GAGAL DARI GOOGLE:", rawText);
-                    Swal.fire({
-                        icon: 'error', title: 'Error API Google',
-                        text: "Sistem menerima data yang salah dari server. Harap pastikan Anda telah melakukan 'Deployment Baru' (New version) pada Apps Script."
-                    });
                     throw new Error("Respon API tidak valid (Bukan JSON).");
                 }
             } catch (networkError) {
                 clearTimeout(timeoutId);
-                console.error("❌ KONEKSI GAGAL:", networkError);
                 throw networkError;
             }
         }
@@ -942,6 +937,7 @@
             }
 
             const handleSuccess = (res) => {
+                consecutiveSyncFails = 0;
                 syncQueue.shift();
                 saveQueueToLocal();
                 isSyncingQueue = false;
@@ -959,16 +955,13 @@
 
             const handleFail = (err) => {
                 isSyncingQueue = false;
-                if (badge) {
-                    badge.innerHTML = `<i class="fa-solid fa-cloud-xmark mr-1"></i> <span class="text-[10px] font-bold tracking-wider">OFFLINE (GAGAL)</span>`;
-                    badge.className = "cursor-pointer hidden sm:flex items-center bg-red-800/50 text-red-200 px-3 py-1.5 rounded-full border border-red-700/50 mr-4 select-none";
-                }
+                consecutiveSyncFails++;
 
                 task.retry = (task.retry || 0) + 1;
                 if (task.retry >= 3) {
                     syncQueue.shift();
                     saveQueueToLocal();
-                    Swal.fire('Sinkronisasi Dibatalkan', 'Satu tugas gagal dikirim ke server setelah 3 kali percobaan dan terpaksa dibatalkan.', 'warning');
+                    Swal.fire('Sinkronisasi Dibatalkan', 'Pastikan Deployment Google Apps Script Anda diset ke "Who has access: Anyone".', 'warning');
                     setTimeout(() => processSyncQueue(), 2000);
                 }
             };
@@ -1127,10 +1120,12 @@
 
         function startAutoSync() {
             if (autoSyncInterval) clearInterval(autoSyncInterval);
-            autoSyncInterval = setInterval(silentSync, 10000);
+            autoSyncInterval = setInterval(silentSync, 1000); // SETTING INTERVAL 1 DETIK
         }
 
         function silentSync(force = false) {
+            if (isSyncingBackground) return; // Mencegah request menumpuk
+
             if (!force) {
                 const modal = document.getElementById('modal-validasi');
                 if (modal && !modal.classList.contains('hidden')) return;
@@ -1141,9 +1136,12 @@
                 }
             }
 
+            isSyncingBackground = true;
             fetchGasAPI('getAppData')
                 .then(parsed => {
+                    isSyncingBackground = false;
                     if (!parsed) return;
+                    consecutiveSyncFails = 0; // Reset error jika sukses
                     let newHash = JSON.stringify(parsed);
                     if (lastDataHash !== newHash) {
                         lastDataHash = newHash;
@@ -1153,20 +1151,19 @@
 
                         populateDropdowns();
                         refreshAllViews();
+                    }
 
-                        const badge = document.getElementById('sync-status-badge');
-                        if (badge) {
-                            badge.innerHTML = `<span class="flex h-2.5 w-2.5 relative mr-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span></span><span class="text-[10px] font-bold tracking-wider">LIVE SYNC</span>`;
-                            badge.className = "cursor-pointer hidden sm:flex items-center bg-blue-800/50 text-blue-100 px-3 py-1.5 rounded-full border border-blue-700/50 mr-4 select-none hover:bg-blue-700/50 transition";
-                        }
+                    const badge = document.getElementById('sync-status-badge');
+                    if (badge) {
+                        badge.innerHTML = `<span class="flex h-2.5 w-2.5 relative mr-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span></span><span class="text-[10px] font-bold tracking-wider">LIVE SYNC</span>`;
+                        badge.className = "cursor-pointer hidden sm:flex items-center bg-blue-800/50 text-blue-100 px-3 py-1.5 rounded-full border border-blue-700/50 mr-4 select-none hover:bg-blue-700/50 transition";
                     }
                 })
                 .catch(err => {
-                    const badge = document.getElementById('sync-status-badge');
-                    if (badge) {
-                        badge.innerHTML = `<i class="fa-solid fa-cloud-xmark mr-1"></i> <span class="text-[10px] font-bold tracking-wider">CEK AKSES GAS</span>`;
-                        badge.className = "cursor-pointer hidden sm:flex items-center bg-red-800/50 text-red-200 px-3 py-1.5 rounded-full border border-red-700/50 mr-4 select-none";
-                    }
+                    isSyncingBackground = false;
+                    consecutiveSyncFails++;
+                    // Tidak memunculkan pesan error / mengubah warna badge agar tidak spamming visual
+                    // Interval akan terus mencoba setiap 1 detik
                 });
         }
 
@@ -1193,6 +1190,7 @@
                             if (callback) callback();
                             return;
                         }
+                        consecutiveSyncFails = 0; // reset
                         lastDataHash = JSON.stringify(parsed);
                         appData.master = parsed.master || [];
                         appData.orders = parsed.orders || [];
@@ -1250,7 +1248,7 @@
             }
         }
 
-        // FUNGSI KOMPRESI FOTO OTOMATIS (Mencegah Google Sheets Lambat/Error)
+        // FUNGSI KOMPRESI FOTO OTOMATIS
         function compressImage(file) {
             return new Promise((resolve) => {
                 const reader = new FileReader();
@@ -1317,6 +1315,12 @@
 
             syncQueue.push({ type: 'CREATE_ORDER', payload: orderPayload });
             saveQueueToLocal();
+
+            // Resume polling if it was stopped
+            if (consecutiveSyncFails >= 3) {
+                consecutiveSyncFails = 0;
+                startAutoSync();
+            }
             processSyncQueue();
 
             btn.innerHTML = orig; btn.disabled = false;
@@ -1998,6 +2002,12 @@
 
             syncQueue.push({ type: 'UPDATE_JOB', payload: payload });
             saveQueueToLocal();
+
+            // Resume if stopped
+            if (consecutiveSyncFails >= 3) {
+                consecutiveSyncFails = 0;
+                startAutoSync();
+            }
             processSyncQueue();
 
             if (data.status === 'Completed') {
@@ -2068,6 +2078,12 @@
 
             syncQueue.push({ type: 'UPDATE_JOB', payload: payload });
             saveQueueToLocal();
+
+            // Resume if stopped
+            if (consecutiveSyncFails >= 3) {
+                consecutiveSyncFails = 0;
+                startAutoSync();
+            }
             processSyncQueue();
         }
 
@@ -2326,6 +2342,12 @@
 
                     syncQueue.push({ type: 'DELETE_JOB', payload: id });
                     saveQueueToLocal();
+
+                    // Resume if stopped
+                    if (consecutiveSyncFails >= 3) {
+                        consecutiveSyncFails = 0;
+                        startAutoSync();
+                    }
                     processSyncQueue();
                 }
             });
@@ -2443,6 +2465,12 @@
 
             syncQueue.push({ type: 'UPDATE_JOB', payload: payload });
             saveQueueToLocal();
+
+            // Resume if stopped
+            if (consecutiveSyncFails >= 3) {
+                consecutiveSyncFails = 0;
+                startAutoSync();
+            }
             processSyncQueue();
         }
 
@@ -2460,6 +2488,11 @@
 
             syncQueue.push({ type: 'MASTER_PASS', admin: adminP, ct: ctP });
             saveQueueToLocal();
+
+            if (consecutiveSyncFails >= 3) {
+                consecutiveSyncFails = 0;
+                startAutoSync();
+            }
             processSyncQueue();
         }
 
@@ -2534,6 +2567,11 @@
 
                     syncQueue.push({ type: 'MASTER_ADD', cat: currentMasterCategory, val: res.value });
                     saveQueueToLocal();
+
+                    if (consecutiveSyncFails >= 3) {
+                        consecutiveSyncFails = 0;
+                        startAutoSync();
+                    }
                     processSyncQueue();
                 }
             });
@@ -2550,12 +2588,18 @@
 
             syncQueue.push({ type: 'MASTER_DEL', cat: currentMasterCategory, val: val });
             saveQueueToLocal();
+
+            if (consecutiveSyncFails >= 3) {
+                consecutiveSyncFails = 0;
+                startAutoSync();
+            }
             processSyncQueue();
         }
 
+        // Registrasi Service Worker Dinamis untuk Offline Caching & PWA Installability
         if ('serviceWorker' in navigator) {
             const swCode = `
-                const CACHE_NAME = 'crane-ppa-v3';
+                const CACHE_NAME = 'crane-ppa-v2';
                 self.addEventListener('install', e => {
                     e.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(['/'])));
                     self.skipWaiting();
@@ -2567,7 +2611,9 @@
                     self.clients.claim();
                 });
                 self.addEventListener('fetch', e => {
+                    // Hindari cache request API ke Google atau operasi POST
                     if (e.request.url.includes('script.google.com') || e.request.method !== 'GET') return;
+                    
                     e.respondWith(
                         fetch(e.request).catch(() => caches.match(e.request).then(res => res || caches.match('/')))
                     );
